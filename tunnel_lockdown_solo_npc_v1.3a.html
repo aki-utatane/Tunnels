@@ -1,0 +1,1521 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>トンネル封鎖 v1.3a - NPC Cooperative</title>
+<style>
+:root{
+  --bg:#0b0f13;--panel:#121920;--panel2:#19232d;--text:#eef3f7;--muted:#93a2ae;
+  --line:#31404d;--accent:#edb454;--good:#65d18a;--bad:#ff7272;--blue:#83b9ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic","Hiragino Kaku Gothic ProN",sans-serif}
+body{overflow:hidden}
+button,select{font:inherit}
+button{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:10px;padding:8px 11px;cursor:pointer}
+button:disabled{opacity:.35;cursor:default}
+button:active:not(:disabled){transform:translateY(1px)}
+button.primary{background:#293642;border-color:#526576}
+#app{height:100%;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 11px;background:#0e1419;border-bottom:1px solid var(--line)}
+.title{font-weight:850;letter-spacing:.04em;margin-right:auto}
+.ver{font-size:11px;color:var(--muted);font-weight:650}
+.pill{font-size:11px;color:var(--muted);padding:5px 8px;border:1px solid var(--line);border-radius:999px;background:#111820}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 350px}
+#boardWrap{position:relative;min-width:0;min-height:0;overflow:hidden;background:
+ radial-gradient(circle at 50% 48%,#1b252d 0,#111920 43%,#090e12 100%)}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+#toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:4;
+ background:rgba(7,11,15,.94);border:1px solid var(--line);border-radius:10px;padding:8px 11px;
+ font-size:12px;opacity:0;transition:.18s;pointer-events:none}
+#side{border-left:1px solid var(--line);background:var(--panel);padding:11px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.section{background:#0f161d;border:1px solid var(--line);border-radius:13px;padding:11px}
+.section h3{font-size:13px;margin:0 0 9px;color:#dbe5eb}
+.row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+label{font-size:11px;color:var(--muted)}
+select{background:#0c1319;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px}
+.small{font-size:11px;color:var(--muted);line-height:1.5}
+#turnList{display:flex;gap:5px;flex-wrap:wrap}
+.turnChip{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:4px 7px;border-radius:999px;display:inline-flex;align-items:center;gap:6px;line-height:1}
+.turnChip.active{background:var(--accent);border-color:var(--accent);color:#15100a;font-weight:800}
+.turnAvatar svg{width:22px;height:22px;display:block}
+.turnSelf{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#253541;color:#dfe9ef;font-size:8px;font-weight:900}
+#hand{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-items:start}
+.cardHand{height:132px;border:1px solid #445463;border-radius:10px;background:#161f27;display:flex;justify-content:center;align-items:center;cursor:pointer;overflow:hidden}
+.cardHand.sel{outline:3px solid var(--accent);outline-offset:1px}
+.cardHand svg{max-width:90%;max-height:92%}
+#hintInfo{margin-top:7px;min-height:17px;font-size:11px;color:var(--muted)}
+.status{display:grid;grid-template-columns:1fr auto;gap:5px 10px;font-size:12px}
+.status div:nth-child(odd){color:var(--muted)}
+#result{font-size:15px;font-weight:800;margin-top:8px}
+.npcCard{padding:7px 0;border-bottom:1px solid rgba(49,64,77,.6)}
+.npcTop{display:flex;justify-content:space-between;gap:7px;align-items:center}
+.npcName{font-size:12px;font-weight:800}
+.npcStrategy{font-size:9px;border:1px solid var(--line);border-radius:999px;padding:2px 5px;color:var(--muted);margin-left:4px}
+.npcDesc{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.35}
+.thinkingPulse{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.62}50%{opacity:1}}
+#speechNow{min-height:61px;padding:9px 10px;border-radius:11px;border:1px solid #394956;background:#0b1218;margin-bottom:7px}
+.speechSpeaker{font-size:10px;font-weight:850;margin-bottom:4px}
+.speechText{font-size:12px;line-height:1.45}
+#conversation{display:flex;flex-direction:column;gap:5px;max-height:165px;overflow:auto}
+.speechHistory{font-size:10px;color:var(--muted);padding:4px 6px;border-left:2px solid #465b6a;line-height:1.4}
+.speechHistory strong{color:#dce6ec}
+#gameLog{display:flex;flex-direction:column;gap:4px;max-height:130px;overflow:auto}
+.logItem{font-size:10px;color:var(--muted);border-bottom:1px solid rgba(49,64,77,.45);padding-bottom:4px}
+.logItem strong{color:#dce5eb}
+.legend{display:flex;gap:9px;flex-wrap:wrap;font-size:10px;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}.openDot{background:var(--accent)}.validDot{background:var(--good)}
+
+/* result overlay */
+#endOverlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(4,8,11,.76);backdrop-filter:blur(3px);z-index:20;padding:18px}
+#endOverlay.show{display:flex}
+.endCard{width:min(430px,92vw);background:#111921;border:1px solid #40515f;border-radius:18px;padding:19px;box-shadow:0 20px 55px rgba(0,0,0,.4)}
+.endTitle{font-size:25px;font-weight:900;margin-bottom:6px}.endSub{font-size:12px;color:var(--muted);line-height:1.55}
+.endStats{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:12px;margin:14px 0}.endStats div:nth-child(odd){color:var(--muted)}
+
+/* escape cutscene */
+#escapeScene{position:absolute;inset:0;display:none;z-index:30;overflow:hidden;background:
+ radial-gradient(circle at 34% 52%,rgba(72,58,38,.5),rgba(5,8,10,.97) 38%,#020405 72%)}
+#escapeScene.show{display:block}
+.escapeTunnel{position:absolute;left:20%;top:50%;width:190px;height:118px;transform:translate(-50%,-50%);
+ border-radius:50%;background:#010202;box-shadow:0 0 0 14px #392b20,0 0 0 20px #19130e,0 0 50px rgba(0,0,0,.9)}
+.escapeTunnel:before{content:"";position:absolute;inset:13px;border-radius:50%;border:5px dashed rgba(102,78,50,.45);animation:tunnelPulse .7s ease-in-out infinite}
+@keyframes tunnelPulse{50%{transform:scale(1.05);opacity:.55}}
+.banditRunner{position:absolute;left:18%;top:50%;width:105px;height:160px;transform:translate(-50%,-50%);animation:escapeRun 3.1s cubic-bezier(.2,.66,.34,1) forwards}
+@keyframes escapeRun{
+  0%{left:19%;top:53%;transform:translate(-50%,-50%) scale(.35) rotate(-5deg);opacity:.2}
+  18%{left:29%;top:48%;transform:translate(-50%,-50%) scale(.92) rotate(5deg);opacity:1}
+  38%{top:54%;transform:translate(-50%,-50%) scale(1) rotate(-4deg)}
+  60%{top:47%;transform:translate(-50%,-50%) scale(1.02) rotate(6deg)}
+  82%{top:54%;transform:translate(-50%,-50%) scale(1.02) rotate(-6deg)}
+  100%{left:112%;top:48%;transform:translate(-50%,-50%) scale(.95) rotate(5deg);opacity:1}
+}
+.laughBubble{position:absolute;left:36%;top:20%;background:#f4ead6;color:#17110a;padding:10px 14px;border-radius:18px;font-size:22px;font-weight:950;
+ transform:rotate(-4deg);opacity:0;animation:laughPop 2.8s .42s ease forwards}
+.laughBubble:after{content:"";position:absolute;left:22px;bottom:-12px;border:7px solid transparent;border-top-color:#f4ead6}
+@keyframes laughPop{0%{opacity:0;transform:scale(.5) rotate(-4deg)}15%{opacity:1;transform:scale(1.08) rotate(3deg)}30%{transform:scale(1) rotate(-3deg)}78%{opacity:1}100%{opacity:0;transform:translateX(180px) rotate(5deg)}}
+.escapeTitle{position:absolute;left:50%;bottom:12%;transform:translateX(-50%);font-size:28px;font-weight:950;letter-spacing:.16em;color:#ffda7a;
+ text-shadow:0 3px 18px rgba(0,0,0,.8);opacity:0;animation:titleIn .5s 1.9s forwards}
+@keyframes titleIn{to{opacity:1}}
+#skipEscape{position:absolute;right:14px;top:14px;z-index:34;background:rgba(18,25,32,.7)}
+.dust{position:absolute;left:27%;top:64%;font-size:34px;opacity:0;animation:dustMove 1.6s .5s ease-out forwards}
+@keyframes dustMove{0%{opacity:0;transform:translateX(0) scale(.4)}20%{opacity:.45}100%{opacity:0;transform:translateX(280px) scale(1.3)}}
+
+@media(max-width:820px){
+ body{overflow:auto}#app{height:auto;min-height:100%}
+ main{grid-template-columns:1fr;grid-template-rows:minmax(57vh,1fr) auto}
+ #boardWrap{min-height:57vh}#side{border-left:0;border-top:1px solid var(--line)}
+}
+
+#startOverlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(4,8,11,.82);backdrop-filter:blur(4px);z-index:40;padding:18px}
+#startOverlay.show{display:flex}
+.startCard{width:min(480px,92vw);background:#111921;border:1px solid #40515f;border-radius:18px;padding:20px;box-shadow:0 22px 60px rgba(0,0,0,.45)}
+.startTitle{font-size:24px;font-weight:900;margin-bottom:14px}
+.startGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.startGrid label{display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--muted)}
+.startGrid select{width:100%}
+.startNote{margin-top:12px;font-size:11px;color:var(--muted);line-height:1.5}
+
+#bubbleLayer{position:absolute;inset:0;z-index:12;pointer-events:none;overflow:hidden}
+.npcBubble{position:absolute;max-width:min(320px,44vw);padding:9px 12px;background:#f5efe4;color:#171411;border-radius:16px;
+ box-shadow:0 8px 24px rgba(0,0,0,.35);font-size:12px;line-height:1.45;opacity:0;border:2px solid var(--bubbleColor,#d7e2e9);
+ animation:bubbleInOut 3.2s ease forwards}
+.npcBubble strong{display:block;font-size:10px;margin-bottom:3px}
+.npcBubble:after{content:"";position:absolute;width:0;height:0;border:8px solid transparent}
+.npcBubble.seat0{left:4%;top:8%}
+.npcBubble.seat0:after{left:22px;bottom:-16px;border-top-color:var(--bubbleColor,#d7e2e9)}
+.npcBubble.seat1{right:4%;top:16%}
+.npcBubble.seat1:after{right:22px;bottom:-16px;border-top-color:var(--bubbleColor,#d7e2e9)}
+.npcBubble.seat2{right:7%;bottom:10%}
+.npcBubble.seat2:after{right:24px;top:-16px;border-bottom-color:var(--bubbleColor,#d7e2e9)}
+.bubbleRow{display:flex;align-items:flex-start;gap:8px}
+.bubbleAvatar svg{width:30px;height:30px;display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,.16))}
+.bubbleText{flex:1;min-width:0}
+@keyframes bubbleInOut{
+  0%{opacity:0;transform:translateY(8px) scale(.96)}
+  8%{opacity:1;transform:translateY(0) scale(1)}
+  78%{opacity:1;transform:translateY(0) scale(1)}
+  100%{opacity:0;transform:translateY(-8px) scale(.98)}
+}
+@media(max-width:820px){
+ .startGrid{grid-template-columns:1fr}
+ .npcBubble{max-width:58vw;font-size:11px}
+ .npcBubble.kei{bottom:5%}
+}
+
+
+
+.headerTurn{display:flex;align-items:center;gap:7px;margin-right:auto;min-width:0}
+.headerTurnLabel{font-size:10px;color:var(--muted);font-weight:850;letter-spacing:.1em}
+header #turnList{display:flex;gap:4px;flex-wrap:nowrap;min-width:0}
+header .turnChip{font-size:10px;padding:4px 6px;white-space:nowrap}
+
+/* Full-height recent-move HUD. Nearly invisible until the user points at it. */
+#gameLogPanel{
+ position:absolute;left:10px;top:10px;bottom:10px;z-index:11;width:min(320px,44vw);
+ padding:7px 9px;border:0;border-radius:0;
+ background:linear-gradient(90deg,rgba(5,10,14,.10) 0%,rgba(5,10,14,.035) 58%,rgba(5,10,14,0) 100%);
+ opacity:.42;transition:background .18s ease,opacity .18s ease,backdrop-filter .18s ease;
+ pointer-events:auto;overflow:hidden
+}
+#gameLogPanel:hover{
+ background:linear-gradient(90deg,rgba(6,11,16,.84) 0%,rgba(6,11,16,.55) 72%,rgba(6,11,16,.06) 100%);
+ opacity:1;backdrop-filter:blur(2px)
+}
+.gameLogTitle{font-size:10px;font-weight:850;color:#eef4f7;margin-bottom:5px;letter-spacing:.05em;text-shadow:0 1px 3px rgba(0,0,0,.95)}
+#gameLog{display:flex;flex-direction:column;gap:8px;height:calc(100% - 20px);overflow:hidden;padding-bottom:4px}
+#gameLogPanel .logItem{
+ font-size:10px;color:rgba(238,244,247,.64);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ border:0;padding:0;text-shadow:0 1px 3px rgba(0,0,0,.98);flex:0 0 auto
+}
+#gameLogPanel .logItem:nth-child(n+5){opacity:.78}
+#gameLogPanel .logItem:nth-child(n+8){opacity:.58}
+#gameLogPanel .logItem:nth-child(n+11){opacity:.38}
+#gameLogPanel:hover .logItem{color:#fff;white-space:normal;overflow:visible;opacity:1;text-shadow:none}
+
+.passBtn{border-color:#755f35;color:#ffe1a1;background:#2a2419}
+.passBtn:not(:disabled){border-color:#d4a64d;background:#382c18;color:#ffe4a7;box-shadow:0 0 0 1px rgba(237,180,84,.12) inset}
+.passBtn:disabled{opacity:.34}
+
+/* Desktop/iPad landscape: all four information blocks fit without sidebar scrolling. */
+#side{
+ height:100%;overflow:hidden;padding:8px;gap:7px;
+ display:grid;grid-template-rows:minmax(205px,235px) minmax(105px,1fr) auto minmax(105px,145px);
+ align-content:stretch
+}
+#side .section{padding:8px;min-height:0;overflow:hidden}
+#side .section h3{font-size:12px;margin:0 0 6px}
+.handSection{display:grid;grid-template-rows:auto minmax(100px,1fr) auto auto}
+#hand{gap:6px;min-height:100px;align-items:stretch}
+.cardHand{height:100%;min-height:100px;max-height:132px}
+.handControls{margin-top:6px;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px!important}
+.handControls button{min-width:0;padding:6px 4px!important;font-size:10px!important;white-space:nowrap}
+#hintBtn{grid-column:auto}
+#passBtn{grid-column:auto}
+#hintInfo{margin-top:4px;min-height:14px;font-size:10px}
+
+.conversationSection{display:grid;grid-template-rows:auto minmax(0,1fr)}
+#conversation{height:100%;max-height:none;overflow:hidden;gap:3px}
+.speechHistory{font-size:9.5px;padding:3px 5px;line-height:1.3}
+.status{grid-template-columns:1fr auto 1fr auto;gap:4px 8px;font-size:10.5px}
+#result{font-size:12px;margin-top:4px}
+.helpSection .small{font-size:9.5px;line-height:1.35}
+.helpSection .legend{margin-top:5px!important;font-size:9px}
+#side .row{gap:4px}
+
+@media(max-width:1100px) and (min-width:821px){
+ main{grid-template-columns:minmax(0,1fr) 320px}
+ #side{grid-template-rows:minmax(190px,215px) minmax(95px,1fr) auto minmax(95px,125px);gap:6px;padding:6px}
+ .cardHand{min-height:92px;max-height:115px}
+ .handControls button{font-size:9px!important;padding:5px 3px!important}
+ .helpSection .small{font-size:8.8px}
+}
+
+@media(max-width:820px){
+ #side{height:auto;overflow:visible;display:flex;flex-direction:column;padding:8px;gap:8px}
+ .handSection{display:block}
+ #hand{min-height:110px}
+ .cardHand{height:120px;max-height:none}
+ .handControls{display:flex!important;flex-wrap:wrap}
+ .handControls button{font-size:10px!important;padding:6px 7px!important}
+ #conversation{max-height:150px}
+}
+
+/* Victory cutscene: the counterpart to the escape scene. */
+#victoryScene{position:absolute;inset:0;display:none;z-index:31;overflow:hidden;
+ background:radial-gradient(circle at 50% 48%,rgba(50,88,64,.32),rgba(5,9,11,.91) 58%,rgba(2,4,5,.98));}
+#victoryScene.show{display:block}
+.victoryGlow{position:absolute;left:50%;top:46%;width:42vmin;height:42vmin;transform:translate(-50%,-50%);border-radius:50%;
+ background:radial-gradient(circle,rgba(255,221,116,.38),rgba(255,221,116,.08) 48%,transparent 70%);animation:vGlow 1.35s ease-in-out infinite alternate}
+@keyframes vGlow{to{transform:translate(-50%,-50%) scale(1.12);opacity:.72}}
+.victoryTitle{position:absolute;left:50%;top:22%;transform:translate(-50%,-50%) scale(.65);white-space:nowrap;
+ font-size:clamp(30px,6vw,70px);font-weight:950;letter-spacing:.07em;color:#ffe08a;text-shadow:0 4px 24px rgba(0,0,0,.8),0 0 24px rgba(255,211,90,.25);
+ opacity:0;animation:vTitle .72s .2s cubic-bezier(.2,.9,.25,1.25) forwards}
+.victorySub{position:absolute;left:50%;top:34%;transform:translateX(-50%);font-size:14px;color:#edf5ef;letter-spacing:.16em;opacity:0;animation:vFade .5s .8s forwards}
+@keyframes vTitle{to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@keyframes vFade{to{opacity:1}}
+#victoryNpcRow{position:absolute;left:50%;top:53%;transform:translate(-50%,-50%);width:min(760px,90vw);display:flex;justify-content:center;gap:22px;align-items:flex-end}
+.victoryNpc{position:relative;width:150px;text-align:center;opacity:0;transform:translateY(35px);animation:npcCelebrate .55s var(--delay) cubic-bezier(.2,.85,.25,1.22) forwards}
+.victoryNpcAvatar{width:70px;height:70px;margin:0 auto 8px;filter:drop-shadow(0 6px 18px rgba(0,0,0,.38));animation:npcBounce .7s calc(var(--delay) + .5s) ease-in-out 2}
+.victoryNpcAvatar svg{width:70px;height:70px;display:block}
+.victoryNpcBadge{display:inline-block;padding:5px 11px;border-radius:999px;background:#111a20;border:2px solid var(--npcColor);font-size:13px;font-weight:950;color:var(--npcColor);box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.victoryNpcSpeech{margin-top:10px;padding:8px 9px;border-radius:14px;background:#f7f0e4;color:#17120d;border:2px solid var(--npcColor);font-size:11px;line-height:1.35;position:relative}
+.victoryNpcSpeech:before{content:"";position:absolute;top:-11px;left:50%;transform:translateX(-50%);border:6px solid transparent;border-bottom-color:var(--npcColor)}
+@keyframes npcCelebrate{to{opacity:1;transform:translateY(0)}}
+@keyframes npcBounce{0%,100%{transform:translateY(0) rotate(0)}35%{transform:translateY(-12px) rotate(-5deg)}65%{transform:translateY(-5px) rotate(5deg)}}
+.confettiPiece{position:absolute;top:-10%;width:8px;height:15px;border-radius:2px;opacity:.92;animation:confettiFall var(--fall) linear var(--delay2) forwards}
+@keyframes confettiFall{0%{transform:translate3d(0,-10vh,0) rotate(0deg)}100%{transform:translate3d(var(--drift),115vh,0) rotate(720deg);opacity:.65}}
+.victoryFooter{position:absolute;left:50%;bottom:10%;transform:translateX(-50%);font-size:12px;color:rgba(239,246,241,.82);opacity:0;animation:vFade .4s 1.8s forwards}
+#skipVictory{position:absolute;right:14px;top:14px;z-index:34;background:rgba(18,25,32,.72)}
+
+
+/* v1.1 information architecture */
+.title{display:flex;align-items:center;gap:7px}
+.helpBtn{padding:6px 9px;font-size:11px;background:#111820}
+.headerTurn{margin-right:0}
+.headerStatus{
+ display:flex;align-items:center;gap:5px;flex-wrap:nowrap;
+ padding:4px 7px;border-left:1px solid var(--line);border-right:1px solid var(--line)
+}
+.headerStatus span{
+ white-space:nowrap;font-size:10px;color:var(--muted);padding:3px 5px;border-radius:999px;background:rgba(255,255,255,.025)
+}
+.headerStatus b{font-size:11px;color:#eef4f7;margin-left:3px}
+.headerResult{display:none}
+
+/* Recent moves: no occupied left-side panel. Four readable lines, then a three-line fade. */
+#gameLogPanel{
+ position:absolute;left:12px;top:12px;bottom:auto;z-index:11;width:min(310px,42vw);
+ padding:0;border:0;background:none!important;opacity:1;backdrop-filter:none!important;
+ pointer-events:none;overflow:visible
+}
+#gameLogPanel:hover{background:none!important;opacity:1;backdrop-filter:none!important}
+.gameLogTitle{
+ font-size:9px;font-weight:800;color:rgba(239,246,250,.58);margin-bottom:5px;letter-spacing:.08em;
+ text-shadow:0 1px 3px rgba(0,0,0,.95)
+}
+#gameLog{
+ display:flex;flex-direction:column;gap:5px;height:auto;max-height:none;overflow:visible;padding:0;
+ width:max-content;max-width:100%;pointer-events:none
+}
+#gameLogPanel .logItem{
+ font-size:10px;color:rgba(239,246,250,.84);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ border:0;padding:0;text-shadow:0 1px 3px rgba(0,0,0,.98);opacity:1;transition:opacity .16s ease,color .16s ease;
+ max-width:300px
+}
+#gameLogPanel .logItem:nth-child(5){opacity:.58}
+#gameLogPanel .logItem:nth-child(6){opacity:.32}
+#gameLogPanel .logItem:nth-child(7){opacity:.12}
+#gameLogPanel .logItem:nth-child(n+8){display:none}
+#gameLogPanel.logSharp .logItem{
+ opacity:1!important;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,1)
+}
+
+/* Right side: only hand and conversation. No sidebar scrolling on desktop. */
+#side{
+ height:100%;overflow:hidden;padding:8px;gap:8px;
+ display:grid;grid-template-rows:minmax(220px,245px) minmax(0,1fr)
+}
+#side .section{padding:9px;min-height:0;overflow:hidden}
+.handSection{display:grid;grid-template-rows:auto minmax(110px,1fr) auto auto}
+.conversationSection{display:grid;grid-template-rows:auto minmax(0,1fr)}
+#conversation{height:100%;max-height:none;overflow:hidden}
+
+/* Help modal */
+#helpOverlay{
+ position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+ z-index:50;background:rgba(4,8,11,.78);backdrop-filter:blur(4px);padding:18px
+}
+#helpOverlay.show{display:flex}
+.helpCard{
+ width:min(780px,94vw);max-height:86vh;background:#111921;border:1px solid #40515f;border-radius:18px;
+ box-shadow:0 24px 70px rgba(0,0,0,.48);display:flex;flex-direction:column;overflow:hidden
+}
+.helpHeader{
+ flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+ padding:18px 19px 14px;border-bottom:1px solid var(--line)
+}
+.helpTitle{font-size:24px;font-weight:900}
+.helpLead{margin-top:5px;font-size:12px;color:var(--muted);line-height:1.5}
+.helpBody{overflow-y:auto;padding:15px 19px 22px;scrollbar-gutter:stable}
+.helpBody section{padding:0 0 17px;margin:0 0 16px;border-bottom:1px solid rgba(49,64,77,.55)}
+.helpBody section:last-child{border-bottom:0;margin-bottom:0}
+.helpBody h3{font-size:15px;margin:0 0 8px}
+.helpBody p,.helpBody li{font-size:12px;line-height:1.65;color:#dce5eb}
+.helpBody p{margin:6px 0}
+.helpBody ol{margin:7px 0 7px 20px;padding:0}
+.helpCompare{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.helpCompare>div{
+ padding:10px;border:1px solid var(--line);border-radius:10px;background:#0d141a
+}
+.helpCompare b{display:block;font-size:12px;margin-bottom:5px;color:#f2f6f8}
+.helpCompare span{font-size:10px;color:var(--muted);line-height:1.5;display:block}
+.helpNpcList{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+.helpNpc{
+ display:grid;grid-template-columns:38px 1fr;gap:8px;align-items:center;padding:9px;
+ border:1px solid var(--line);border-radius:10px;background:#0d141a
+}
+.helpNpcFace svg{width:36px;height:36px;display:block}
+.helpNpcName{font-size:12px;font-weight:850}
+.helpNpcType{font-size:9px;color:var(--muted);margin-top:2px}
+.helpNpcDesc{font-size:9px;color:#b9c6cf;line-height:1.35;margin-top:3px}
+.helpLegendDot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px}
+
+@media(max-width:1100px) and (min-width:821px){
+ .headerStatus{gap:2px;padding:4px}
+ .headerStatus span{font-size:9px;padding:2px 3px}
+ .headerStatus b{font-size:10px}
+ #side{grid-template-rows:minmax(205px,225px) minmax(0,1fr)}
+}
+@media(max-width:820px){
+ .headerStatus{order:10;width:100%;justify-content:center;border:0;border-top:1px solid var(--line);padding-top:6px}
+ #side{height:auto;overflow:visible;display:flex;flex-direction:column}
+ .helpCompare,.helpNpcList{grid-template-columns:1fr}
+ .helpCard{max-height:90vh}
+}
+
+
+/* v1.1a: keep Help immediately to the right of the title */
+header .title{margin-right:0!important;flex:0 0 auto}
+header .helpBtn{margin-right:auto;flex:0 0 auto}
+
+
+/* v1.2 difficulty and social tuning */
+.startGrid{grid-template-columns:repeat(2,1fr)}
+.speechHistory{
+ display:grid!important;grid-template-columns:20px minmax(0,1fr);gap:5px;align-items:start;
+ border-left:0!important;padding:3px 2px!important
+}
+.historyFace svg{width:18px;height:18px;display:block}
+.historyLine{min-width:0;font-size:9.5px;line-height:1.35;color:var(--muted)}
+.historyLine strong{color:#dce6ec}
+@media(max-width:820px){.startGrid{grid-template-columns:1fr}}
+
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="title">トンネル封鎖 <span class="ver">v1.3a</span></div>
+  <button id="helpBtn" class="helpBtn">遊び方</button>
+  <div class="headerTurn"><span class="headerTurnLabel">TURN</span><div id="turnList"></div></div>
+  <div class="headerStatus" aria-label="ゲーム状況">
+    <span>出口 <b id="openCount">0</b></span>
+    <span>山札 <b id="deckCount">0</b></span>
+    <span>配置 <b id="placedCount">0</b></span>
+    <span>パス <b id="passCount">0/3</b></span>
+  </div>
+  <span id="result" class="headerResult"></span>
+  <button id="zoomOutBtn">−</button><span class="pill" id="zoomLabel">100%</span><button id="zoomInBtn">＋</button>
+  <button id="fitBtn">盤面を中央へ</button>
+  <button id="newBtn" class="primary">新規ゲーム</button>
+</header>
+<main>
+<div id="boardWrap">
+  <canvas id="board"></canvas>
+  <div id="toast"></div>
+  <div id="gameLogPanel">
+    <div class="gameLogTitle">直近の手</div>
+    <div id="gameLog"></div>
+  </div>
+  <div id="bubbleLayer"></div>
+
+  <div id="startOverlay" class="show">
+    <div class="startCard">
+      <div class="startTitle">ゲーム設定</div>
+      <div class="startGrid">
+        <label>ゲーム難易度
+          <select id="gameDifficulty">
+            <option value="casual">カジュアル</option>
+            <option value="standard" selected>標準</option>
+            <option value="hard">高難度</option>
+          </select>
+        </label>
+        <label>開始カード
+          <select id="startDifficulty">
+            <option value="easy" selected>5出口</option>
+            <option value="hard">6出口</option>
+          </select>
+        </label>
+        <label>NPC人数
+          <select id="npcCount">
+            <option value="1">1人</option>
+            <option value="2">2人</option>
+            <option value="3" selected>3人</option>
+          </select>
+        </label>
+        <label>仲間の判断
+          <select id="difficulty">
+            <option value="easy">気楽</option>
+            <option value="normal" selected>標準</option>
+            <option value="hard">慎重</option>
+          </select>
+        </label>
+      </div>
+      <div class="startNote">標準設定は「5出口＋標準難易度＋NPC3人」です。設定はゲーム中は表示されません。</div>
+      <div class="row" style="margin-top:14px">
+        <button id="startGameBtn" class="primary">ゲームスタート</button>
+        <button id="startHelpBtn">遊び方を確認</button>
+        <button id="cancelStartBtn">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="helpOverlay">
+    <div class="helpCard">
+      <div class="helpHeader">
+        <div>
+          <div class="helpTitle">遊び方</div>
+          <div class="helpLead">仲間のNPCと協力し、逃走中の囚人が使う地下道をすべて封鎖するゲームです。</div>
+        </div>
+        <button id="closeHelpBtn">閉じる</button>
+      </div>
+
+      <div class="helpBody">
+        <section>
+          <h3>ゲームの目的</h3>
+          <p>中央の開始カードから伸びるトンネルへカードをつなぎ、<b>開いている出口をすべて0にする</b>と勝利です。NPCも同じ目的でカードを出します。</p>
+          <p>一方、手札3枚のどれも置けない場合はパスできます。<b>ゲーム全体で3回目のパスが発生すると敗北</b>し、囚人が脱出します。</p>
+        </section>
+
+        <section>
+          <h3>自分の手番</h3>
+          <ol>
+            <li>先手はあなたと参加NPCの中から毎ゲームランダムに決まります。</li>
+            <li>自分の手番になったら、右側の手札3枚から1枚を選びます。</li>
+            <li>必要に応じて90°回転・180°反転を行います。</li>
+            <li>盤面に表示される配置候補へカーソルを合わせると、実際に置かれる候補だけが強く表示されます。クリック／タップで確定します。</li>
+            <li>カードを置くと山札から1枚補充され、次のプレイヤーへ手番が移ります。</li>
+          </ol>
+          <p>カード同士が接する辺では、<b>トンネル同士・壁同士が一致</b>しなければ置けません。</p>
+        </section>
+
+        <section>
+          <h3>ゲーム難易度</h3>
+          <p>難易度は<b>NPCをわざと弱くするのではなく、山札の構成</b>で調整します。仲間との協力感を残したまま、閉じやすい札と分岐札の比率が変わります。</p>
+          <div class="helpCompare">
+            <div><b>カジュアル</b><span>行止まり札が多め。まず勝利演出やNPCとの掛け合いを楽しみたい場合向け。</span></div>
+            <div><b>標準</b><span>行止まり札を少し減らし、分岐札を増加。現在の推奨設定。</span></div>
+            <div><b>高難度</b><span>さらに行止まり札を減らし、分岐札を増加。出口管理を誤ると収束しにくい。</span></div>
+          </div>
+        </section>
+
+        <section>
+          <h3>開始カード：5出口と6出口</h3>
+          <div class="helpCompare">
+            <div><b>5出口</b><span>標準設定。最初から処理すべき出口が少なく、まずはこちらを推奨。</span></div>
+            <div><b>6出口</b><span>高難度。開始直後から1本多く出口が開いているため、分岐の管理が難しくなります。</span></div>
+          </div>
+        </section>
+
+        <section>
+          <h3>NPC人数と仲間の判断</h3>
+          <p><b>NPC人数：</b>1〜3人。人数だけを指定し、実際に参加する仲間は候補メンバーから毎回ランダムに選ばれます。人数が多いほど会話も増え、協力プレイ感が強くなります。</p>
+          <div class="helpCompare">
+            <div><b>気楽</b><span>上位候補から広めに選ぶため、判断に少しブレがあります。わちゃわちゃ感は強め。</span></div>
+            <div><b>標準</b><span>有力な数手から選択。性格差と強さのバランスを取った推奨設定。</span></div>
+            <div><b>慎重</b><span>評価上もっとも良い手を優先。ゲーム自体の難易度とは別の「仲間の強さ」です。</span></div>
+          </div>
+        </section>
+
+        <section>
+          <h3>仲間NPC</h3>
+          <p>戦略は大きく「封鎖」「連結」「先読み」の3系統です。同じ系統でも口調や反応は異なります。</p>
+          <div id="helpNpcList" class="helpNpcList"></div>
+        </section>
+
+        <section>
+          <h3>盤面操作</h3>
+          <p>ドラッグで盤面移動、マウスホイール／ピンチで拡大縮小できます。「盤面を中央へ」で表示位置を戻せます。</p>
+          <p><span class="helpLegendDot openDot"></span>黄色＝開いている出口　 <span class="helpLegendDot validDot"></span>緑＝選択カードの配置候補</p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="escapeScene">
+    <button id="skipEscape">SKIP</button>
+    <div class="escapeTunnel"></div>
+    <div class="dust">⋯ ⋯ ⋯</div>
+    <div class="laughBubble">ハハハ！ またな！</div>
+    <div class="banditRunner" aria-label="笑いながら逃げる囚人">
+      <svg viewBox="0 0 110 165" width="100%" height="100%">
+        <!-- original generic masked prisoner, not copied game artwork -->
+        <ellipse cx="56" cy="35" rx="25" ry="27" fill="#e6bd91"/>
+        <path d="M31 32 Q56 1 82 31 L78 20 Q56 2 35 20Z" fill="#30343a"/>
+        <path d="M33 31 Q56 20 79 31 L78 46 Q56 53 34 45Z" fill="#111619"/>
+        <ellipse cx="46" cy="36" rx="4" ry="3" fill="#f5f5ed"/><ellipse cx="68" cy="36" rx="4" ry="3" fill="#f5f5ed"/>
+        <circle cx="47" cy="36" r="1.6"/><circle cx="67" cy="36" r="1.6"/>
+        <path d="M47 53 Q57 61 69 52" fill="none" stroke="#3b2114" stroke-width="3" stroke-linecap="round"/>
+        <path d="M38 64 Q56 56 75 64 L83 112 Q57 122 31 111Z" fill="#e8e8dd"/>
+        <path d="M37 70 L78 70 M34 82 L80 82 M33 94 L82 94 M32 106 L83 106" stroke="#30343a" stroke-width="7"/>
+        <path d="M34 70 Q16 87 19 109" fill="none" stroke="#e6bd91" stroke-width="11" stroke-linecap="round"/>
+        <path d="M78 70 Q95 82 93 102" fill="none" stroke="#e6bd91" stroke-width="11" stroke-linecap="round"/>
+        <path d="M42 112 Q33 135 28 157" fill="none" stroke="#313840" stroke-width="15" stroke-linecap="round"/>
+        <path d="M67 112 Q78 135 88 153" fill="none" stroke="#313840" stroke-width="15" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="escapeTitle">ESCAPED!</div>
+  </div>
+
+
+  <div id="victoryScene">
+    <button id="skipVictory">SKIP</button>
+    <div class="victoryGlow"></div>
+    <div class="victoryTitle">CONGRATULATIONS!</div>
+    <div class="victorySub">ALL TUNNELS SEALED</div>
+    <div id="victoryConfetti"></div>
+    <div id="victoryNpcRow"></div>
+    <div class="victoryFooter">脱出路を完全封鎖しました</div>
+  </div>
+
+  <div id="endOverlay">
+    <div class="endCard">
+      <div class="endTitle" id="endTitle"></div>
+      <div class="endSub" id="endSub"></div>
+      <div class="endStats">
+        <div>総手番</div><div id="endTurns">0</div>
+        <div>最大開放出口</div><div id="endMaxOpen">0</div>
+        <div>残り山札</div><div id="endDeck">0</div>
+        <div>パス回数</div><div id="endPasses">0</div>
+      </div>
+      <div class="row"><button id="againBtn" class="primary">同じ設定でもう一度</button><button id="closeEndBtn">盤面を見る</button></div>
+    </div>
+  </div>
+</div>
+
+<aside id="side">
+  <div class="section handSection">
+    <h3>あなたの手札</h3>
+    <div id="hand"></div>
+    <div class="row handControls">
+      <button id="rotL">↺ 90°</button>
+      <button id="flipBtn">上下反転 180°</button>
+      <button id="rotR">90° ↻</button>
+      <button id="hintBtn">作戦ヒント</button>
+      <button id="passBtn" class="passBtn" disabled>パス 0/3</button>
+    </div>
+    <div id="hintInfo"></div>
+  </div>
+
+  <div class="section conversationSection">
+    <h3>会話履歴</h3>
+    <div id="conversation"></div>
+  </div>
+</aside>
+</main>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+const canvas=document.getElementById("board"), ctx=canvas.getContext("2d"), wrap=document.getElementById("boardWrap");
+const handEl=document.getElementById("hand"), npcCountEl=document.getElementById("npcCount"), difficultyEl=document.getElementById("difficulty"), gameDifficultyEl=document.getElementById("gameDifficulty");
+const startDifficultyEl=document.getElementById("startDifficulty"), openCountEl=document.getElementById("openCount"), deckCountEl=document.getElementById("deckCount");
+const placedCountEl=document.getElementById("placedCount"), turnListEl=document.getElementById("turnList"), resultEl=document.getElementById("result");
+const passCountEl=document.getElementById("passCount"), passBtnEl=document.getElementById("passBtn");
+const npcStateEl=document.getElementById("npcState"), conversationEl=document.getElementById("conversation"), bubbleLayerEl=document.getElementById("bubbleLayer");
+const gameLogEl=document.getElementById("gameLog"), hintInfoEl=document.getElementById("hintInfo"), toastEl=document.getElementById("toast");
+const zoomLabelEl=document.getElementById("zoomLabel"), endOverlayEl=document.getElementById("endOverlay"), escapeSceneEl=document.getElementById("escapeScene");
+const victorySceneEl=document.getElementById("victoryScene"), victoryNpcRowEl=document.getElementById("victoryNpcRow"), victoryConfettiEl=document.getElementById("victoryConfetti");
+const endTitleEl=document.getElementById("endTitle"), endSubEl=document.getElementById("endSub"), endTurnsEl=document.getElementById("endTurns");
+const startOverlayEl=document.getElementById("startOverlay");
+const helpOverlayEl=document.getElementById("helpOverlay"), helpNpcListEl=document.getElementById("helpNpcList"), gameLogPanelEl=document.getElementById("gameLogPanel");
+const endMaxOpenEl=document.getElementById("endMaxOpen"), endDeckEl=document.getElementById("endDeck"), endPassesEl=document.getElementById("endPasses");
+
+const NPC_PROFILES=[
+ {id:"haru",name:"ハル",brain:"lock",color:"#6dce95",skin:"#efcfb6",hair:"#2f4a39",accent:"#d9f5e2",
+  pass:"今の3枚はどこにも置けない。ここはパスする。",
+  intro:"出口を増やさず、一つずつ閉じていこう。落ち着いていけば大丈夫。",
+  celebrate:"やった！ 全出口封鎖。これは気持ちいいね！",
+  winShort:"やった！ 完璧！",winComment:"よし、全部閉じた。最後まで広げすぎなかったのが効いたね。",loseComment:"逃げられた……広がった出口を、もう一手早く止めたかった。"},
+ {id:"ren",name:"レン",brain:"connect",color:"#edb454",skin:"#f0d1b5",hair:"#6a4c2e",accent:"#ffefc2",
+  pass:"繋げられる場所がないな。今回はパス。",
+  intro:"最初は焦らず道を整えよう。いい流れができれば最後に一気に畳める。",
+  celebrate:"よっしゃ！ 最後まで繋いで、ちゃんと閉じ切った！",
+  winShort:"よっしゃー！",winComment:"やった！ 繋いで、最後は全部きれいに畳めた。",loseComment:"うわ、逃げた！ 繋げるのを楽しみすぎたかな……。"},
+ {id:"kei",name:"ケイ",brain:"read",color:"#83b9ff",skin:"#eed0b8",hair:"#395179",accent:"#dce9ff",
+  pass:"合法手ゼロ。盤面が変わるまで待つしかない。パス。",
+  intro:"盤面だけじゃなく、手札の先まで見て組み立てよう。噛み合えば崩れない。",
+  celebrate:"成功。みんなの手が最後まで噛み合ったね。",
+  winShort:"成功。",winComment:"成功。次手を残し続けたのが最後に効いたと思う。",loseComment:"脱出ルートが残った。どこで選択肢を失ったか見直したい。"},
+ {id:"momo",name:"モモ",brain:"connect",color:"#f493b6",skin:"#f2d4bf",hair:"#8a4665",accent:"#ffe2ee",
+  pass:"うーん、この3枚は行き先なし。今回はパスで様子見！",
+  intro:"かわいく繋いで、最後はスパッと閉じよう！ 流れを作れたら勝てるよ。",
+  celebrate:"やったー！ みんなでぴったり閉じ切ったね！",
+  winShort:"やったー！",winComment:"やったー！ 道を作ってから畳む流れ、すごくきれいだった！",loseComment:"あーん、逃げられた！ もう少し早く畳みに行くべきだったかも。"},
+ {id:"jin",name:"ジン",brain:"lock",color:"#b08cff",skin:"#e8c9af",hair:"#2f2b40",accent:"#ece4ff",
+  pass:"置ける場所なし。無理はしない。ここはパスだ。",
+  intro:"危ない枝から順に消していこう。余計な出口を残さなければ勝ち筋は太い。",
+  celebrate:"封鎖完了。いい締め方だった。",
+  winShort:"封鎖完了。",winComment:"封鎖完了。危険な枝を早めに処理できたのが勝因だ。",loseComment:"逃したか……枝を一本、見逃していたようだ。"},
+ {id:"yuna",name:"ユナ",brain:"read",color:"#67d1dc",skin:"#f0d5bc",hair:"#2f5d62",accent:"#daf7fa",
+  pass:"今は置くと損が大きい。いったんパスして盤面の変化を待つね。",
+  intro:"今の手だけでなく、次の形まで見ていこう。崩れにくさを大事にしたい。",
+  celebrate:"やった。最後まで形がきれいに保てたね。",
+  winShort:"やった。",winComment:"やった。選択肢を保ったまま最後まで到達できたのが大きい。",loseComment:"脱出を許したね。どこで形が崩れたか後で振り返ろう。"}
+];
+
+function shuffled(a){ const x=[...a]; for(let i=x.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [x[i],x[j]]=[x[j],x[i]] } return x; }
+function pickNpcProfiles(n){ return shuffled(NPC_PROFILES).slice(0,n); }
+function brainOf(p){ return p&&p.profile?(p.profile.brain||"read"):"read"; }
+function expressionForText(text=""){
+ if(/やった|成功|完璧|よし|封鎖完了|ぴったり/.test(text)) return 'happy';
+ if(/パス|置けない|合法手ゼロ|無理|待つ/.test(text)) return 'troubled';
+ if(/逃げ|見直|失っ|危険|苦しい|どこで/.test(text)) return 'sad';
+ if(/次|候補|読め|慎重|整え|落ち着/.test(text)) return 'think';
+ return 'normal';
+}
+function faceSVG(profile,mood='normal',size=28){
+ if(!profile) return `<svg viewBox="0 0 32 32" width="${size}" height="${size}" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#32424f"/><circle cx="16" cy="16" r="9" fill="#efcfb6"/></svg>`;
+ const skin=profile.skin||'#efcfb6', hair=profile.hair||'#333', accent=profile.accent||'#fff', ring=profile.color||'#8fb4d9';
+ let mouth='M 11 21 Q 16 23 21 21', brows='', extra='';
+ if(mood==='happy') mouth='M 11 20 Q 16 25 21 20';
+ else if(mood==='sad') mouth='M 11 22 Q 16 18 21 22';
+ else if(mood==='troubled'){ mouth='M 11 21 Q 16 20 21 21'; brows='<path d="M10.5 12 L14 11" stroke="#3b2c23" stroke-width="1.4" stroke-linecap="round"/><path d="M18 11 L21.5 12.5" stroke="#3b2c23" stroke-width="1.4" stroke-linecap="round"/>'; }
+ else if(mood==='think'){ mouth='M 12 21 L 20 21'; brows='<path d="M10.8 12.3 L14 11.2" stroke="#3b2c23" stroke-width="1.3" stroke-linecap="round"/><path d="M18 11.2 L21.2 12.3" stroke="#3b2c23" stroke-width="1.3" stroke-linecap="round"/>'; }
+ if(profile.id==='haru') extra=`<rect x="9" y="6.7" width="14" height="2.5" rx="1.2" fill="${accent}"/>`;
+ else if(profile.id==='ren') extra=`<path d="M8 10 Q16 4 24 10 L24 12 L8 12 Z" fill="${accent}"/>`;
+ else if(profile.id==='kei') extra=`<rect x="9.2" y="14" width="5.2" height="4" rx="1" fill="none" stroke="${accent}" stroke-width="1.4"/><rect x="17.6" y="14" width="5.2" height="4" rx="1" fill="none" stroke="${accent}" stroke-width="1.4"/><line x1="14.4" y1="16" x2="17.6" y2="16" stroke="${accent}" stroke-width="1.2"/>`;
+ else if(profile.id==='momo') extra=`<circle cx="10.5" cy="8" r="1.9" fill="${accent}"/><circle cx="21.5" cy="8" r="1.9" fill="${accent}"/>`;
+ else if(profile.id==='jin') extra=`<path d="M7.5 25 Q16 23 24.5 25" fill="none" stroke="${accent}" stroke-width="2.2"/>`;
+ else if(profile.id==='yuna') extra=`<path d="M8.5 15 Q11 6 16 6 Q21 6 23.5 15" fill="none" stroke="${accent}" stroke-width="2"/>`;
+ return `<svg viewBox="0 0 32 32" width="${size}" height="${size}" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#19232b" stroke="${ring}" stroke-width="2"/><circle cx="16" cy="16" r="9.2" fill="${skin}"/><path d="M8.7 14 Q9 7 16 6.7 Q23 7 23.3 14 Q20 11.2 16 11.2 Q12 11.2 8.7 14 Z" fill="${hair}"/>${extra}${brows}<circle cx="12.9" cy="16.2" r="1" fill="#2c2019"/><circle cx="19.1" cy="16.2" r="1" fill="#2c2019"/><path d="${mouth}" fill="none" stroke="#8c5646" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+}
+
+
+// Canonical vertical 1x2 card boundary slots.
+// doubled local coordinates avoid floating point: x2/y2 are in half-cell units.
+const BASE_SLOTS=[
+ {x2:1,y2:0,nx:0,ny:-1}, // top
+ {x2:2,y2:1,nx:1,ny:0},  // right upper
+ {x2:2,y2:3,nx:1,ny:0},  // right lower
+ {x2:1,y2:4,nx:0,ny:1},  // bottom
+ {x2:0,y2:3,nx:-1,ny:0}, // left lower
+ {x2:0,y2:1,nx:-1,ny:0}  // left upper
+];
+
+// Independent visual/deck designs inspired by the same 1:2 tunnel-card grammar.
+// Not a reproduction of the publisher's illustrations.
+const DECK_PROFILES={
+ casual:[
+  {name:"dead",ports:[0],w:14},{name:"straight",ports:[0,3],w:10},{name:"bendA",ports:[0,1],w:9},
+  {name:"bendB",ports:[0,2],w:8},{name:"side",ports:[1,4],w:7},{name:"uTurn",ports:[1,2],w:5},
+  {name:"teeA",ports:[0,1,5],w:5},{name:"teeB",ports:[0,2,4],w:4},{name:"three",ports:[0,1,3],w:4},
+  {name:"four",ports:[0,1,3,5],w:2},{name:"fork",ports:[1,2,5],w:1}
+ ],
+ standard:[
+  {name:"dead",ports:[0],w:11},{name:"straight",ports:[0,3],w:10},{name:"bendA",ports:[0,1],w:9},
+  {name:"bendB",ports:[0,2],w:8},{name:"side",ports:[1,4],w:7},{name:"uTurn",ports:[1,2],w:5},
+  {name:"teeA",ports:[0,1,5],w:6},{name:"teeB",ports:[0,2,4],w:5},{name:"three",ports:[0,1,3],w:4},
+  {name:"four",ports:[0,1,3,5],w:3},{name:"fork",ports:[1,2,5],w:1}
+ ],
+ hard:[
+  {name:"dead",ports:[0],w:9},{name:"straight",ports:[0,3],w:10},{name:"bendA",ports:[0,1],w:9},
+  {name:"bendB",ports:[0,2],w:8},{name:"side",ports:[1,4],w:7},{name:"uTurn",ports:[1,2],w:5},
+  {name:"teeA",ports:[0,1,5],w:7},{name:"teeB",ports:[0,2,4],w:5},{name:"three",ports:[0,1,3],w:5},
+  {name:"four",ports:[0,1,3,5],w:3},{name:"fork",ports:[1,2,5],w:1}
+ ]
+};
+const TILE_LIBRARY=DECK_PROFILES.casual;
+
+let nextCardId=1, boardCards=[], deck=[], players=[], turn=0, selected=0, selectedRot=0, gameOver=false, aiBusy=false;
+let hintMove=null, hoveredPlacement=null, logItems=[], conversationItems=[], moveHistory=[];
+let stats={turns:0,passes:0,maxOpen:0};
+let dpr=Math.max(1,Math.min(2,window.devicePixelRatio||1)), baseCell=58, zoom=1, cell=baseCell, camX=0,camY=0;
+let dragging=false,moved=false,dragX=0,dragY=0,startCamX=0,startCamY=0,pinchDist=0,escapeTimer=0,victoryTimer=0;
+
+
+function strategyLabel(brain){
+ if(brain==="lock")return "封鎖型";
+ if(brain==="connect")return "連結型";
+ return "先読み型";
+}
+function strategyDescription(brain){
+ if(brain==="lock")return "危険な出口を早めに閉じ、分岐の拡大を嫌う。";
+ if(brain==="connect")return "道を整えて次の選択肢を残し、後からまとめて閉じる。";
+ return "自分の残り手札まで見て、次の手が死なない配置を選ぶ。";
+}
+function buildHelpNpcList(){
+ if(!helpNpcListEl)return;
+ helpNpcListEl.innerHTML=NPC_PROFILES.map(p=>`
+   <div class="helpNpc">
+     <div class="helpNpcFace">${faceSVG(p,"normal",36)}</div>
+     <div>
+       <div class="helpNpcName" style="color:${p.color}">${p.name}</div>
+       <div class="helpNpcType">${strategyLabel(p.brain)}</div>
+       <div class="helpNpcDesc">${strategyDescription(p.brain)}</div>
+     </div>
+   </div>`).join("");
+}
+function openHelp(){
+ buildHelpNpcList();
+ helpOverlayEl.classList.add("show");
+}
+function closeHelp(){helpOverlayEl.classList.remove("show");}
+
+function kcell(x,y){return x+","+y}
+function opp(n){return {nx:-n.nx,ny:-n.ny}}
+function rotPoint(x2,y2,r){
+ r=((r%4)+4)%4;
+ if(r===0)return{x2:x2,y2:y2,w2:2,h2:4};
+ if(r===1)return{x2:4-y2,y2:x2,w2:4,h2:2};
+ if(r===2)return{x2:2-x2,y2:4-y2,w2:2,h2:4};
+ return{x2:y2,y2:2-x2,w2:4,h2:2};
+}
+function rotNormal(nx,ny,r){
+ r=((r%4)+4)%4;
+ if(r===0)return{nx:nx,ny:ny};
+ if(r===1)return{nx:-ny,ny:nx};
+ if(r===2)return{nx:-nx,ny:-ny};
+ return{nx:ny,ny:-nx};
+}
+function dimsForRot(r){return ((((r%4)+4)%4)%2===0)?{w:1,h:2}:{w:2,h:1}}
+function transformedBaseSlots(r){
+ return BASE_SLOTS.map((s,i)=>{const p=rotPoint(s.x2,s.y2,r);const n=rotNormal(s.nx,s.ny,r);return {...p,...n,baseIndex:i}});
+}
+function weightedTile(library=TILE_LIBRARY){
+ const pool=[]; for(const t of library) for(let i=0;i<t.w;i++) pool.push(t);
+ const src=pool[Math.floor(Math.random()*pool.length)];
+ return {id:nextCardId++,name:src.name,ports:[...src.ports]};
+}
+function buildDeck(n=69,library=TILE_LIBRARY){
+ const a=[];for(let i=0;i<n;i++)a.push(weightedTile(library));
+ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
+ return a;
+}
+function drawCard(){return deck.length?deck.pop():null}
+function makePlayer(name,human=false,profile=null,seat=-1){
+ const hand=[];for(let i=0;i<3;i++){const c=drawCard();if(c)hand.push(c)}
+ return {name,human,profile,hand,seat};
+}
+function refill(p){while(p.hand.length<3&&deck.length){const c=drawCard();if(c)p.hand.push(c)}}
+
+function startCard(difficulty){
+ // 2x2 "super card": 8 edge slots clockwise-ish.
+ const slots=[
+  {x2:1,y2:0,nx:0,ny:-1},{x2:3,y2:0,nx:0,ny:-1},
+  {x2:4,y2:1,nx:1,ny:0},{x2:4,y2:3,nx:1,ny:0},
+  {x2:3,y2:4,nx:0,ny:1},{x2:1,y2:4,nx:0,ny:1},
+  {x2:0,y2:3,nx:-1,ny:0},{x2:0,y2:1,nx:-1,ny:0}
+ ];
+ const ports=difficulty==="easy"?[0,2,3,5,7]:[0,1,2,4,5,7];
+ return {id:"START",type:"start",name:"cell",x:-1,y:-1,w:2,h:2,r:0,startSlots:slots,startPorts:ports};
+}
+function cardDims(c){ if(c.type==="start")return{w:2,h:2}; return dimsForRot(c.r||0); }
+function cardSlots(c){
+ if(c.type==="start"){
+  return c.startSlots.map((s,i)=>({x2:c.x*2+s.x2,y2:c.y*2+s.y2,nx:s.nx,ny:s.ny,hasPort:c.startPorts.includes(i),slotIndex:i}));
+ }
+ return transformedBaseSlots(c.r||0).map(s=>({
+  x2:c.x*2+s.x2,y2:c.y*2+s.y2,nx:s.nx,ny:s.ny,
+  hasPort:c.ports.includes(s.baseIndex),slotIndex:s.baseIndex
+ }));
+}
+function occupiedMap(cards=boardCards){
+ const m=new Map();
+ for(const c of cards){const d=cardDims(c);for(let yy=0;yy<d.h;yy++)for(let xx=0;xx<d.w;xx++)m.set(kcell(c.x+xx,c.y+yy),c)}
+ return m;
+}
+function slotMap(cards=boardCards){
+ const m=new Map();
+ for(const c of cards)for(const s of cardSlots(c))m.set(`${s.x2},${s.y2},${s.nx},${s.ny}`,{...s,card:c});
+ return m;
+}
+function openPorts(cards=boardCards){
+ const sm=slotMap(cards), out=[];
+ for(const c of cards)for(const s of cardSlots(c)){
+  if(!s.hasPort)continue;
+  const key=`${s.x2},${s.y2},${-s.nx},${-s.ny}`;
+  if(!sm.has(key))out.push({...s,card:c});
+ }
+ return out;
+}
+function countOpenEnds(cards=boardCards){return openPorts(cards).length}
+function canPlaceOn(tile,x,y,r,cards=boardCards){
+ const d=dimsForRot(r), occ=occupiedMap(cards);
+ for(let yy=0;yy<d.h;yy++)for(let xx=0;xx<d.w;xx++)if(occ.has(kcell(x+xx,y+yy)))return false;
+ const candidate={...tile,x,y,r,type:"normal"};
+ const sm=slotMap(cards);
+ let touches=false,connects=false;
+ for(const s of cardSlots(candidate)){
+  const other=sm.get(`${s.x2},${s.y2},${-s.nx},${-s.ny}`);
+  if(other){
+   touches=true;
+   if(!!s.hasPort!==!!other.hasPort)return false;
+   if(s.hasPort&&other.hasPort)connects=true;
+  }
+ }
+ return touches&&connects;
+}
+function validPlacementsOn(tile,cards=boardCards,rotFilter=null){
+ const opens=openPorts(cards), out=[], seen=new Set();
+ const rotations=rotFilter==null?[0,1,2,3]:[rotFilter];
+ for(const r of rotations){
+  const locals=transformedBaseSlots(r).filter(s=>tile.ports.includes(s.baseIndex));
+  for(const op of opens)for(const lp of locals){
+   if(lp.nx!==-op.nx||lp.ny!==-op.ny)continue;
+   const dx2=op.x2-lp.x2,dy2=op.y2-lp.y2;
+   if(dx2%2||dy2%2)continue;
+   const x=dx2/2,y=dy2/2, key=`${x},${y},${r}`;
+   if(seen.has(key))continue;seen.add(key);
+   if(canPlaceOn(tile,x,y,r,cards))out.push({x,y,r});
+  }
+ }
+ return out;
+}
+function addCard(tile,x,y,r,cards=boardCards){
+ const c={...tile,x,y,r,type:"normal"};return [...cards,c];
+}
+
+/* v1.3a: NPCs must not create a newly unreachable open tunnel.
+   A port is "unreachable" when no normal tile shape, in any rotation,
+   can legally connect to it under the current board geometry. */
+function openPortKey(p){return `${p.x2},${p.y2},${p.nx},${p.ny}`}
+function canAnyTileReachOpenPort(op,cards=boardCards){
+ for(const tile of TILE_LIBRARY){
+  for(let r=0;r<4;r++){
+   const locals=transformedBaseSlots(r).filter(s=>tile.ports.includes(s.baseIndex));
+   for(const lp of locals){
+    if(lp.nx!==-op.nx||lp.ny!==-op.ny)continue;
+    const dx2=op.x2-lp.x2,dy2=op.y2-lp.y2;
+    if(dx2%2||dy2%2)continue;
+    const x=dx2/2,y=dy2/2;
+    if(canPlaceOn(tile,x,y,r,cards))return true;
+   }
+  }
+ }
+ return false;
+}
+function uncloseableOpenPortKeys(cards=boardCards){
+ const bad=new Set();
+ for(const op of openPorts(cards))if(!canAnyTileReachOpenPort(op,cards))bad.add(openPortKey(op));
+ return bad;
+}
+function createsNewUncloseableOpenPort(tile,v,cards=boardCards,baselineBad=null){
+ const before=baselineBad||uncloseableOpenPortKeys(cards);
+ const after=uncloseableOpenPortKeys(addCard(tile,v.x,v.y,v.r,cards));
+ for(const key of after)if(!before.has(key))return true;
+ return false;
+}
+function contactCount(c,cards){
+ const sm=slotMap(cards.filter(x=>x!==c));let n=0;
+ for(const s of cardSlots(c))if(sm.has(`${s.x2},${s.y2},${-s.nx},${-s.ny}`))n++;
+ return n;
+}
+function tileLabel(t){
+ const m={dead:"行止まり",straight:"直線",bendA:"曲がり",bendB:"大曲がり",side:"横断",uTurn:"折返し",teeA:"三叉路",teeB:"三叉路",three:"分岐",four:"四分岐",fork:"分岐"};
+ return m[t&&t.name]||"坑道";
+}
+
+function moveFeatures(p,tile,idx,v,cards=boardCards){
+ const next=addCard(tile,v.x,v.y,v.r,cards), open=countOpenEnds(next), cur=countOpenEnds(cards);
+ const placed=next[next.length-1], contacts=contactCount(placed,next);
+ const remaining=p.hand.filter((_,i)=>i!==idx);
+ let futureFlex=0,bestNextOpen=999;
+ for(const t of remaining){
+  const vp=validPlacementsOn(t,next);
+  futureFlex+=Math.min(vp.length,24);
+  for(const nv of vp){bestNextOpen=Math.min(bestNextOpen,countOpenEnds(addCard(t,nv.x,nv.y,nv.r,next)))}
+ }
+ if(bestNextOpen===999)bestNextOpen=open+4;
+ const centerX=v.x+(dimsForRot(v.r).w/2),centerY=v.y+(dimsForRot(v.r).h/2);
+ const dist=Math.abs(centerX)+Math.abs(centerY);
+ return {open,deltaOpen:open-cur,contacts,futureFlex,bestNextOpen,dist};
+}
+function scoreMoveFor(p,tile,idx,v,cards=boardCards){
+ const s=moveFeatures(p,tile,idx,v,cards),brain=brainOf(p);
+ let score=0;
+ if(brain==="lock"){
+  score=-s.open*160+s.contacts*22-s.dist*.35;
+  if(tile.name==="dead")score+=34;if(s.deltaOpen<0)score+=28;if(s.deltaOpen>0)score-=28;
+  if(p.profile&&p.profile.id==="jin"&&s.deltaOpen<0)score+=7;
+ }else if(brain==="connect"){
+  score=-s.open*88+s.contacts*13+s.futureFlex*.5-s.dist*.18;
+  if(["straight","bendA","bendB","side"].includes(tile.name))score+=15;
+  if(tile.name==="dead"&&s.open>2)score-=8;
+  if(p.profile&&p.profile.id==="momo"&&s.futureFlex>12)score+=5;
+ }else{
+  const gain=s.open-s.bestNextOpen;
+  score=-s.open*116+s.contacts*16+s.futureFlex*.39+gain*38-s.dist*.25;
+  if(s.futureFlex===0)score-=48;
+  if(p.profile&&p.profile.id==="yuna"&&s.futureFlex>10)score+=5;
+ }
+ return {...s,score};
+}
+function rankedMoves(p,cards=boardCards,avoidUncloseable=false){
+ const a=[], baselineBad=avoidUncloseable?uncloseableOpenPortKeys(cards):null;
+ p.hand.forEach((tile,idx)=>validPlacementsOn(tile,cards).forEach(v=>{
+  if(avoidUncloseable&&createsNewUncloseableOpenPort(tile,v,cards,baselineBad))return;
+  a.push({...v,idx,tileName:tile.name,...scoreMoveFor(p,tile,idx,v,cards)});
+ }));
+ a.sort((x,y)=>y.score-x.score);return a;
+}
+function chooseAI(p){
+ const a=rankedMoves(p,boardCards,true);if(!a.length)return null;
+ let i=0;
+ if(difficultyEl.value==="normal")i=Math.floor(Math.random()*Math.min(3,a.length));
+ if(difficultyEl.value==="easy")i=Math.floor(Math.random()*Math.min(7,a.length));
+ const m=a[i];return {...m,candidateCount:a.length,topGap:a.length>1?a[0].score-a[1].score:999};
+}
+function chooseBestHumanMove(p){const a=rankedMoves({...p,profile:null});return a[0]||null}
+function anyLegalMove(p,cards=boardCards){return p.hand.some(t=>validPlacementsOn(t,cards).length>0)}
+function anySafeAIMove(p,cards=boardCards){return rankedMoves(p,cards,true).length>0}
+
+function performPass(p,legalMoveCheck=anyLegalMove){
+ if(gameOver)return false;
+ if(legalMoveCheck(p)){
+  if(p.human)toast("出せる札があるためパスできません");
+  return false;
+ }
+ stats.passes++;
+ addLog(p.name,`パス（${stats.passes}/3）`);
+ moveHistory.push({actor:p.name,pass:true,deltaOpen:0,openBefore:countOpenEnds(),openAfter:countOpenEnds(),tile:null});
+ moveHistory=moveHistory.slice(-10);
+ if(!p.human){ speak(p,p.profile&&p.profile.pass?p.profile.pass:"今回はパス。"); }
+ updateAll();
+ if(stats.passes>=3){
+  gameOver=true;
+  resultEl.textContent="敗北：3回目のパスで脱出を許しました。";
+  addLog("GAME","パス3回で敗北");
+  playEscape();
+  return true;
+ }
+ return true;
+}
+
+function handShape(p){
+ let dead=0,link=0,branch=0;
+ p.hand.forEach(t=>{if(t.name==="dead")dead++;else if(["straight","bendA","bendB","side","uTurn"].includes(t.name))link++;else branch++});
+ return{dead,link,branch};
+}
+function handState(p,cards=boardCards){
+ let totalLegal=0,bestOpen=999,playableDead=0;
+ for(const t of p.hand){
+  const vp=validPlacementsOn(t,cards);totalLegal+=vp.length;if(t.name==="dead"&&vp.length)playableDead++;
+  for(const v of vp)bestOpen=Math.min(bestOpen,countOpenEnds(addCard(t,v.x,v.y,v.r,cards)));
+ }
+ if(bestOpen===999)bestOpen=countOpenEnds(cards)+4;
+ return{totalLegal,bestOpen,playableDead,shape:handShape(p)};
+}
+function speechColor(p){return p&&p.profile&&p.profile.color?p.profile.color:"#b8c4cd"}
+function showBubble(p,text){
+ if(!p||!p.profile)return;
+ const b=document.createElement("div");
+ b.className=`npcBubble seat${Math.max(0,p.seat||0)}`;
+ b.style.setProperty("--bubbleColor",speechColor(p));
+ const mood=expressionForText(text);
+ b.innerHTML=`<div class="bubbleRow"><div class="bubbleAvatar">${faceSVG(p.profile,mood,30)}</div><div class="bubbleText"><strong style="color:${speechColor(p)}">${p.name}</strong>${text}</div></div>`;
+ bubbleLayerEl.appendChild(b);
+ setTimeout(()=>b.remove(),3300);
+}
+function freshenSpeech(p,text){
+ if(!p)return text;
+ const repeated=conversationItems.slice(0,5).some(x=>x.who===p.name&&x.text===text);
+ if(!repeated)return text;
+ const mood=expressionForText(text);
+ const pools={
+  happy:["いいね、今の！","よし、流れが来てる！","これは気持ちいい！"],
+  think:["ちょっと考える。","次の一手まで見たいな。","ここは慎重に見よう。"],
+  troubled:["うーん、これは悩む。","ちょっと苦しいな。","今の手札だと難しい。"],
+  sad:["これは痛いな……","一度立て直したい。","ここは反省だね。"],
+  normal:["なるほど、その手か。","OK、まだいける。","その流れで見てみよう。"]
+ };
+ const list=pools[mood]||pools.normal;
+ return list[(conversationItems.length+(p.seat||0))%list.length];
+}
+function speak(p,text){
+ text=freshenSpeech(p,text);
+ const who=p?p.name:"TEAM",color=speechColor(p),mood=expressionForText(text),profile=p?p.profile:null;
+ conversationItems.unshift({who,text,color,mood,profile});conversationItems=conversationItems.slice(0,12);
+ conversationEl.innerHTML=conversationItems.slice(0,6).map(x=>`<div class="speechHistory"><span class="historyFace">${x.profile?faceSVG(x.profile,x.mood,18):""}</span><span class="historyLine"><strong style="color:${x.color}">${x.who}</strong>　${x.text}</span></div>`).join("");
+ showBubble(p,text);
+}
+function recentPattern(actor){
+ const recent=moveHistory.slice(-5).filter(m=>m.actor===actor);
+ return{
+  expansions:recent.filter(m=>m.deltaOpen>0).length,
+  closures:recent.filter(m=>m.deltaOpen<0).length,
+  last:recent.length?recent[recent.length-1]:null
+ };
+}
+function thinkingLine(p,m){
+ const sh=handShape(p),hard=m.topGap<18||m.candidateCount>14,brain=brainOf(p);
+ if(brain==="lock"){
+  if(m.deltaOpen<0)return "ここは閉じられる。今のうちに出口を減らしておこう。";
+  if(sh.dead>=2)return "閉じ札はある。でも今切る場所じゃない……出口を増やさない方へ。";
+  if(hard)return "二択だな……あとで閉じやすい方を残す。";
+  return "広げすぎない。次に閉じられる形を優先する。";
+ }
+ if(brain==="connect"){
+  if(m.futureFlex>16)return "この繋ぎなら、手元の次の札も生きる。今は道を整えよう。";
+  if(m.deltaOpen<0)return "繋げたいけど、ここは閉じ時だね。";
+  if(hard)return "どっちもありだな……次に曲げやすい方でいく。";
+  return "一本きれいに繋いで、あとでまとめて畳もう。";
+ }
+ if(m.bestNextOpen<m.open)return "次の自分の札まで置けば、もう一段出口を減らせる。ここから入る。";
+ if(m.futureFlex===0)return "今は良く見えるけど、残り2枚が死ぬ。それは避ける。";
+ if(hard)return "候補は拮抗してる。次の合法手が多く残る方を選ぶ。";
+ return "次の手まで読める。これが一番崩れにくい。";
+}
+function reactionLine(p,actor,before,after,openBefore,openAfter){
+ const legalDelta=after.totalLegal-before.totalLegal,bestDelta=before.bestOpen-after.bestOpen,openDelta=openAfter-openBefore;
+ const hist=recentPattern(actor.name),brain=brainOf(p);
+ if(brain==="lock"){
+  if(hist.expansions>=2&&openDelta>0)return `${actor.name}、また広げたね……そろそろ本気で閉じないと追いつかない。`;
+  if(hist.last&&hist.last.deltaOpen>0&&openDelta<0)return "さっき広げた分を戻したね。うん、その方が安心できる。";
+  if(openDelta<0)return after.playableDead? "よし、出口が減った。こっちにも次の閉じ手がある。":"よし、一つ減った。こういう手を続けたい。";
+  if(openDelta>0&&legalDelta<0)return "うーん、出口が増えた上に、こっちの置き場所も減った。苦しい。";
+  if(legalDelta>5)return "その形なら、こっちの札も置きやすくなった。悪くない。";
+  return "まだ処理できる。次は広げずに行きたいな。";
+ }
+ if(brain==="connect"){
+  if(hist.closures>=2&&openDelta<0)return `${actor.name}、今日は閉じるねえ。でも道が細くなりすぎないようにしよう。`;
+  if(legalDelta>6)return "いい繋ぎ！ こっちの手札の行き先も一気に増えた。";
+  if(openDelta>0&&legalDelta>=0)return "広がったけど、繋ぎ先も増えた。まだ畳めるよ。";
+  if(openDelta<0&&legalDelta<-4)return "閉じたのはいいけど、こっちの繋ぎ先も少し消えたな。";
+  if(bestDelta>0)return "その一手で次の形が作りやすくなった。乗れる。";
+  return "OK。その流れなら別の枝を整えるよ。";
+ }
+ if(hist.expansions>=2&&openDelta>0)return `${actor.name}の直近は拡張が続いてる。次の2手で収束できるか注意しよう。`;
+ if(bestDelta>0&&legalDelta>=0)return "助かる。自分の次の最善手が一段良くなった。";
+ if(bestDelta<0&&legalDelta<0)return "今ので自分の候補がかなり減った。次は修正したい。";
+ if(openDelta<0&&after.totalLegal>0)return "出口は減ったし、自分の次手も残ってる。良い手だと思う。";
+ return "盤面は変わったけど、まだ次の手は読める。";
+}
+function reactToMove(actor,preStates,openBefore){
+ const openAfter=countOpenEnds(),cand=[];
+ for(const p of players){
+  if(p.human||p===actor)continue;
+  const b=preStates.get(p.name);if(!b)continue;
+  const a=handState(p),impact=Math.abs(a.totalLegal-b.totalLegal)+Math.abs(b.bestOpen-a.bestOpen)*8+Math.abs(openAfter-openBefore)*5;
+  cand.push({p,b,a,impact});
+ }
+ cand.sort((x,y)=>y.impact-x.impact);
+ const dramatic=Math.abs(openAfter-openBefore)>=2||openAfter<=2||openBefore>=7;
+ if(cand[0])speak(cand[0].p,reactionLine(cand[0].p,actor,cand[0].b,cand[0].a,openBefore,openAfter));
+ if(cand[1]&&(cand[1].impact>=10||dramatic))setTimeout(()=>speak(cand[1].p,reactionLine(cand[1].p,actor,cand[1].b,cand[1].a,openBefore,openAfter)),260);
+ if(cand[2]&&dramatic)setTimeout(()=>speak(cand[2].p,reactionLine(cand[2].p,actor,cand[2].b,cand[2].a,openBefore,openAfter)),520);
+}
+function placeForPlayer(p,idx,v){
+ const tile=p.hand[idx];if(!tile||!canPlaceOn(tile,v.x,v.y,v.r))return false;
+ const openBefore=countOpenEnds(),pre=new Map();
+ for(const np of players)if(!np.human&&np!==p)pre.set(np.name,handState(np));
+ boardCards=addCard(tile,v.x,v.y,v.r);
+ p.hand.splice(idx,1);refill(p);
+ const openAfter=countOpenEnds();
+ stats.turns++;stats.maxOpen=Math.max(stats.maxOpen,openAfter);
+ moveHistory.push({actor:p.name,deltaOpen:openAfter-openBefore,openBefore,openAfter,tile:tile.name});
+ moveHistory=moveHistory.slice(-10);
+ addLog(p.name,`${tileLabel(tile)}を配置（出口 ${openBefore}→${openAfter}）`);
+ hintMove=null;reactToMove(p,pre,openBefore);return true;
+}
+
+function addLog(who,msg){logItems.unshift({who,msg});logItems=logItems.slice(0,18);updateLog()}
+function updateLog(){gameLogEl.innerHTML=logItems.length?logItems.slice(0,7).map(x=>`<div class="logItem"><strong>${x.who}</strong>　${x.msg}</div>`).join(""):'<div class="small">まだ配置されていません。</div>'}
+
+function nextTurn(){
+ if(gameOver)return;
+ updateAll();
+ if(checkEnd())return;
+
+ turn=(turn+1)%players.length;
+ selected=0;selectedRot=0;hintMove=null;hoveredPlacement=null;
+ updateAll();
+
+ const p=players[turn];
+
+ if(!p.human){
+  aiBusy=true;
+  updateAll();
+  setTimeout(()=>{
+   const m=chooseAI(p);
+
+   if(!m){
+    performPass(p,anySafeAIMove);
+    aiBusy=false;
+    updateAll();
+    if(!gameOver&&!checkEnd())setTimeout(nextTurn,520);
+    return;
+   }
+
+   speak(p,thinkingLine(p,m));
+   setTimeout(()=>{
+    placeForPlayer(p,m.idx,m);
+    toast(p.name+"：カードを配置");
+    aiBusy=false;
+    updateAll();
+    if(!checkEnd())setTimeout(nextTurn,430);
+   },720);
+  },280);
+ }else{
+  aiBusy=false;
+  updateAll();
+  if(!anyLegalMove(p)){
+   hintInfoEl.textContent="出せる札がありません。パスしてください。";
+   toast("出せる札なし：パスできます");
+  }
+ }
+}
+
+function buildVictoryScene(){
+ victoryNpcRowEl.innerHTML="";
+ victoryConfettiEl.innerHTML="";
+ const npcs=players.filter(p=>!p.human);
+ npcs.forEach((p,i)=>{
+  const d=document.createElement("div");
+  d.className="victoryNpc";
+  d.style.setProperty("--delay",`${0.65+i*.18}s`);
+  d.style.setProperty("--npcColor",speechColor(p));
+  d.innerHTML=`<div class="victoryNpcAvatar">${faceSVG(p.profile,'happy',70)}</div><div class="victoryNpcBadge">${p.name}</div><div class="victoryNpcSpeech">${(p.profile&&p.profile.winShort)||"やった！"}</div>`;
+  victoryNpcRowEl.appendChild(d);
+ });
+ const confettiColors=["#ffe08a","#6dce95","#83b9ff","#edb454","#f493b6","#67d1dc","#f3f0e7"];
+ for(let i=0;i<56;i++){
+  const c=document.createElement("i");
+  c.className="confettiPiece";
+  c.style.left=`${(i*37)%101}%`;
+  c.style.background=confettiColors[i%confettiColors.length];
+  c.style.setProperty("--fall",`${2.2+(i%9)*.13}s`);
+  c.style.setProperty("--delay2",`${(i%13)*.055}s`);
+  c.style.setProperty("--drift",`${((i%7)-3)*34}px`);
+  victoryConfettiEl.appendChild(c);
+ }
+}
+function finishVictory(){
+ clearTimeout(victoryTimer);
+ victorySceneEl.classList.remove("show");
+ showEnd(true);
+}
+function playVictory(){
+ buildVictoryScene();
+ victorySceneEl.classList.remove("show");
+ void victorySceneEl.offsetWidth;
+ victorySceneEl.classList.add("show");
+ const npcs=players.filter(p=>!p.human);
+ npcs.forEach((p,i)=>setTimeout(()=>{ speak(p,(p.profile&&p.profile.celebrate)||"やった！"); },280+i*220));
+ victoryTimer=setTimeout(finishVictory,3600);
+}
+
+function showEnd(win){
+ endTitleEl.textContent=win?"封鎖成功":"脱出された";
+ endSubEl.textContent=win?"すべてのトンネル出口を閉じました。":"開いたトンネルが残り、囚人に逃げられました。";
+ endTurnsEl.textContent=stats.turns;endMaxOpenEl.textContent=stats.maxOpen;endDeckEl.textContent=deck.length;endPassesEl.textContent=stats.passes;
+ endOverlayEl.classList.add("show");
+ const npcs=players.filter(p=>!p.human);
+ if(npcs.length){
+  const p=npcs[Math.min(npcs.length-1,win?1:2)];
+  const text=win?((p.profile&&p.profile.winComment)||"うまく封鎖できたね。"):((p.profile&&p.profile.loseComment)||"逃げられてしまった。");
+  speak(p,text);
+ }
+}
+function finishLoss(){
+ clearTimeout(escapeTimer);escapeSceneEl.classList.remove("show");showEnd(false);
+}
+function playEscape(){
+ escapeSceneEl.classList.remove("show");void escapeSceneEl.offsetWidth;escapeSceneEl.classList.add("show");
+ escapeTimer=setTimeout(finishLoss,3300);
+}
+function checkEnd(){
+ const open=countOpenEnds();
+ if(open===0&&boardCards.length>1){
+  gameOver=true;resultEl.textContent="勝利：すべての出口を封鎖しました。";addLog("GAME","すべての出口を封鎖");updateAll();playVictory();return true;
+ }
+ const totalHand=players.reduce((n,p)=>n+p.hand.length,0);
+ const anyoneLegal=players.some(p=>anyLegalMove(p));
+ if((deck.length===0&&totalHand===0)||(deck.length===0&&!anyoneLegal)){
+  gameOver=true;resultEl.textContent="敗北：開いた出口が残りました。";addLog("GAME","囚人が脱出");updateAll();playEscape();return true;
+ }
+ return false;
+}
+
+function startGame(){
+ clearTimeout(escapeTimer);clearTimeout(victoryTimer);startOverlayEl.classList.remove("show");escapeSceneEl.classList.remove("show");victorySceneEl.classList.remove("show");endOverlayEl.classList.remove("show");bubbleLayerEl.innerHTML="";
+ gameOver=false;aiBusy=false;hintMove=null;logItems=[];conversationItems=[];moveHistory=[];stats={turns:0,passes:0,maxOpen:0};
+ nextCardId=1;
+ const deckProfile=DECK_PROFILES[gameDifficultyEl.value]||DECK_PROFILES.standard;
+ deck=buildDeck(69,deckProfile);boardCards=[startCard(startDifficultyEl.value)];
+ const npcN=parseInt(npcCountEl.value,10), chosen=pickNpcProfiles(npcN);
+ players=[makePlayer("あなた",true,null,-1)];
+ chosen.forEach((prof,i)=>players.push(makePlayer(prof.name,false,prof,i)));
+ const firstPlayerIndex=Math.floor(Math.random()*players.length);
+ turn=(firstPlayerIndex-1+players.length)%players.length;
+ selected=0;selectedRot=0;hintMove=null;hoveredPlacement=null;resultEl.textContent="";
+ conversationEl.innerHTML="";bubbleLayerEl.innerHTML="";
+ const diffName={casual:"カジュアル",standard:"標準",hard:"高難度"}[gameDifficultyEl.value]||"標準";
+ stats.maxOpen=countOpenEnds();
+ addLog("GAME",`開始：${countOpenEnds()}出口 / ${diffName}`);
+ addLog("GAME",`仲間：${chosen.map(x=>x.name).join(" / ")}`);
+ addLog("GAME",`先手：${players[firstPlayerIndex].name}`);
+ const npcs=players.filter(p=>!p.human);
+ npcs.forEach((p,i)=>setTimeout(()=>{if(!gameOver&&p.profile&&p.profile.intro)speak(p,p.profile.intro)},120+i*300));
+ fitBoard();updateAll();
+ setTimeout(()=>{if(!gameOver)nextTurn()},Math.min(900,260+npcs.length*180));
+}
+
+/* ---------- Drawing ---------- */
+function worldToScreen(x,y){return{x:wrap.clientWidth/2+camX+x*cell,y:wrap.clientHeight/2+camY+y*cell}}
+function screenToWorld(px,py){return{x:(px-wrap.clientWidth/2-camX)/cell,y:(py-wrap.clientHeight/2-camY)/cell}}
+function placementAtScreen(px,py){
+ const p=players[0],tile=p&&p.hand[selected];
+ if(!p||turn!==0||gameOver||aiBusy||!tile)return null;
+ const w=screenToWorld(px,py),vps=validPlacementsOn(tile,boardCards,selectedRot);
+ let best=null,bd=1e9;
+ for(const v of vps){
+  const d=dimsForRot(v.r),cx=v.x+d.w/2,cy=v.y+d.h/2;
+  const inside=w.x>=v.x-.08&&w.x<=v.x+d.w+.08&&w.y>=v.y-.08&&w.y<=v.y+d.h+.08;
+  if(!inside)continue;
+  const dist=(w.x-cx)**2+(w.y-cy)**2;
+  if(dist<bd){best=v;bd=dist}
+ }
+ return best;
+}
+function samePlacement(a,b){
+ return !!a===!!b && (!a || (a.x===b.x&&a.y===b.y&&a.r===b.r));
+}
+
+function roundRect(x,y,w,h,r){const rr=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+rr,y);ctx.arcTo(x+w,y,x+w,y+h,rr);ctx.arcTo(x+w,y+h,x,y+h,rr);ctx.arcTo(x,y+h,x,y,rr);ctx.arcTo(x,y,x+w,y,rr);ctx.closePath()}
+function seeded(n){let x=Math.sin(Number(String(n).replace(/\D/g,"").slice(0,7)||7)*999)*43758.5453;return x-Math.floor(x)}
+function cardRect(c){const d=cardDims(c),s=worldToScreen(c.x,c.y);return{x:s.x,y:s.y,w:d.w*cell,h:d.h*cell}}
+function drawWood(r,c){
+ ctx.save();roundRect(r.x+2,r.y+2,r.w-4,r.h-4,Math.min(10,cell*.12));ctx.clip();
+ ctx.fillStyle=c.type==="start"?"#a96d37":"#7e4c2d";ctx.fillRect(r.x,r.y,r.w,r.h);
+ const seed=seeded(c.id),lines=Math.max(5,Math.floor(r.h/13));
+ for(let i=0;i<lines;i++){
+  const yy=r.y+8+i*(r.h-16)/Math.max(1,lines-1);
+  ctx.strokeStyle=`rgba(35,18,12,${.28+(i%3)*.06})`;ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(r.x-4,yy+Math.sin(i+seed*8)*3);
+  for(let x=r.x;x<r.x+r.w+8;x+=14)ctx.lineTo(x,yy+Math.sin(x*.06+i+seed*5)*4);
+  ctx.stroke();
+ }
+ ctx.restore();
+ ctx.strokeStyle="rgba(255,225,170,.18)";ctx.lineWidth=1.2;roundRect(r.x+2,r.y+2,r.w-4,r.h-4,Math.min(10,cell*.12));ctx.stroke();
+}
+function slotScreen(s){return worldToScreen(s.x2/2,s.y2/2)}
+function drawTunnelCard(c,alpha=1,outline=null){
+ const r=cardRect(c);ctx.save();ctx.globalAlpha=alpha;drawWood(r,c);
+ const ports=cardSlots(c).filter(s=>s.hasPort);
+ const hub={x:r.x+r.w/2,y:r.y+r.h/2};
+ ctx.strokeStyle="#151313";ctx.lineWidth=Math.max(10,cell*.25);ctx.lineCap="round";ctx.lineJoin="round";
+
+ for(const p of ports){
+  const q=slotScreen(p);
+  ctx.beginPath();ctx.moveTo(q.x,q.y);
+  if(p.nx!==0){
+    ctx.lineTo(hub.x,q.y);
+    if(Math.abs(q.y-hub.y)>.5)ctx.lineTo(hub.x,hub.y);
+  }else{
+    ctx.lineTo(q.x,hub.y);
+    if(Math.abs(q.x-hub.x)>.5)ctx.lineTo(hub.x,hub.y);
+  }
+  ctx.stroke();
+ }
+ ctx.fillStyle="#151313";ctx.beginPath();ctx.arc(hub.x,hub.y,Math.max(5,cell*.11),0,Math.PI*2);ctx.fill();
+
+ if(c.type==="start"){
+  ctx.fillStyle="#d9b34b";roundRect(hub.x-cell*.38,hub.y-cell*.32,cell*.76,cell*.64,6);ctx.fill();
+  ctx.strokeStyle="#26211c";ctx.lineWidth=3;
+  for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(hub.x+i*cell*.11,hub.y-cell*.29);ctx.lineTo(hub.x+i*cell*.11,hub.y+cell*.29);ctx.stroke()}
+  ctx.fillStyle="#121212";ctx.beginPath();ctx.arc(hub.x,hub.y,cell*.1,0,Math.PI*2);ctx.fill();
+ }else if(c.ports.length===1){
+  ctx.fillStyle="#2b2925";ctx.beginPath();ctx.arc(hub.x,hub.y,cell*.13,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="#c69b63";ctx.lineWidth=2;
+  for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(hub.x-8+i*7,hub.y-7);ctx.lineTo(hub.x-4+i*7,hub.y+7);ctx.stroke()}
+ }
+ if(outline){ctx.strokeStyle=outline;ctx.lineWidth=3;ctx.setLineDash([7,5]);roundRect(r.x+3,r.y+3,r.w-6,r.h-6,8);ctx.stroke()}
+ ctx.restore();
+}
+function render(){
+ const w=wrap.clientWidth,h=wrap.clientHeight;ctx.clearRect(0,0,w,h);
+ ctx.strokeStyle="rgba(130,155,173,.055)";ctx.lineWidth=1;
+ const ox=((w/2+camX)%cell+cell)%cell,oy=((h/2+camY)%cell+cell)%cell;
+ for(let x=ox;x<w;x+=cell){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
+ for(let y=oy;y<h;y+=cell){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+ for(const c of boardCards)drawTunnelCard(c);
+ // open-port dots
+ for(const p of openPorts()){const q=slotScreen(p);ctx.fillStyle="#edb454";ctx.beginPath();ctx.arc(q.x,q.y,5,0,Math.PI*2);ctx.fill()}
+ const hp=players[0],tile=hp&&hp.hand[selected];
+ if(turn===0&&!gameOver&&tile){
+  const vps=validPlacementsOn(tile,boardCards,selectedRot);
+  for(const v of vps){
+   const hovered=hoveredPlacement&&samePlacement(v,hoveredPlacement);
+   drawTunnelCard(
+    {...tile,...v,type:"normal"},
+    hovered?.62:.14,
+    hovered?"#ffe27a":"#65d18a"
+   );
+  }
+  if(hoveredPlacement){
+   const d=dimsForRot(hoveredPlacement.r);
+   const c=worldToScreen(hoveredPlacement.x+d.w/2,hoveredPlacement.y+d.h/2);
+   ctx.save();
+   ctx.font="700 11px -apple-system,BlinkMacSystemFont,'Segoe UI','Yu Gothic',sans-serif";
+   const label="ここに置く";
+   const tw=ctx.measureText(label).width;
+   const bx=c.x-tw/2-8, by=c.y-d.h*cell/2-25;
+   ctx.fillStyle="rgba(10,15,20,.88)";
+   roundRect(bx,by,tw+16,20,8);ctx.fill();
+   ctx.fillStyle="#ffe27a";
+   ctx.textAlign="center";ctx.textBaseline="middle";
+   ctx.fillText(label,c.x,by+10);
+   ctx.restore();
+  }
+ }
+ if(hintMove&&turn===0&&!gameOver){
+  const t=players[0].hand[hintMove.idx];if(t)drawTunnelCard({...t,...hintMove,type:"normal"},.38,"#83b9ff");
+ }
+}
+function fitBoard(){
+ zoom=1;updateZoomLabel();
+ if(!boardCards.length){camX=camY=0;render();return}
+ let minX=999,minY=999,maxX=-999,maxY=-999;
+ for(const c of boardCards){const d=cardDims(c);minX=Math.min(minX,c.x);minY=Math.min(minY,c.y);maxX=Math.max(maxX,c.x+d.w);maxY=Math.max(maxY,c.y+d.h)}
+ camX=-((minX+maxX)/2)*cell;camY=-((minY+maxY)/2)*cell;render();
+}
+function resize(){const r=wrap.getBoundingClientRect();canvas.width=Math.max(1,Math.floor(r.width*dpr));canvas.height=Math.max(1,Math.floor(r.height*dpr));ctx.setTransform(dpr,0,0,dpr,0,0);render()}
+function setZoom(z,fx=wrap.clientWidth/2,fy=wrap.clientHeight/2){
+ const old=cell,oz=zoom;zoom=Math.max(.48,Math.min(2.5,z));if(Math.abs(oz-zoom)<.001)return;
+ const wx=(fx-wrap.clientWidth/2-camX)/old,wy=(fy-wrap.clientHeight/2-camY)/old;updateZoomLabel();
+ camX=fx-wrap.clientWidth/2-wx*cell;camY=fy-wrap.clientHeight/2-wy*cell;render()
+}
+function updateZoomLabel(){cell=baseCell*zoom;zoomLabelEl.textContent=Math.round(zoom*100)+"%"}
+
+function miniSVG(tile,r){
+ const d=dimsForRot(r),W=d.w*52,H=d.h*52,slots=transformedBaseSlots(r).filter(s=>tile.ports.includes(s.baseIndex));
+ const hubX=W/2,hubY=H/2;
+ const seg=slots.map(s=>{
+   const qx=s.x2/2*52,qy=s.y2/2*52;
+   if(s.nx!==0){
+     return `<path d="M ${qx} ${qy} H ${hubX} V ${hubY}" fill="none" stroke="#151313" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>`;
+   }
+   return `<path d="M ${qx} ${qy} V ${hubY} H ${hubX}" fill="none" stroke="#151313" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>`;
+ }).join("");
+ const plug=tile.ports.length===1?`<circle cx="${hubX}" cy="${hubY}" r="8" fill="#292723"/>`:"";
+ return `<svg viewBox="0 0 ${W} ${H}"><defs><pattern id="g${tile.id}" width="18" height="18" patternUnits="userSpaceOnUse"><rect width="18" height="18" fill="#7e4c2d"/><path d="M0 5 Q8 1 18 6 M0 14 Q10 9 18 14" fill="none" stroke="#3d2419" stroke-width="2"/></pattern></defs><rect x="1" y="1" width="${W-2}" height="${H-2}" rx="7" fill="url(#g${tile.id})" stroke="#a2704b" stroke-width="2"/>${seg}<circle cx="${hubX}" cy="${hubY}" r="6" fill="#151313"/>${plug}</svg>`;
+}
+function updateHand(){
+ handEl.innerHTML="";const p=players[0];if(!p)return;
+ p.hand.forEach((t,i)=>{const d=document.createElement("div");d.className="cardHand"+(i===selected&&turn===0&&!gameOver?" sel":"");d.innerHTML=miniSVG(t,i===selected?selectedRot:0);
+  d.onclick=()=>{if(turn!==0||gameOver||aiBusy)return;selected=i;selectedRot=0;hintMove=null;hoveredPlacement=null;updateAll()};handEl.appendChild(d)});
+}
+function updateTurnList(){
+ turnListEl.innerHTML="";
+ players.forEach((p,i)=>{
+  const s=document.createElement("span");
+  s.className="turnChip"+(i===turn&&!gameOver?" active":"");
+  if(p.human){
+   s.innerHTML=`<span class="turnSelf">YOU</span><span>${p.name}</span>`;
+  }else{
+   const mood=(i===turn&&!gameOver)?'think':'normal';
+   s.innerHTML=`<span class="turnAvatar">${faceSVG(p.profile,mood,22)}</span><span>${p.name}</span>`;
+  }
+  turnListEl.appendChild(s)
+ })
+}
+
+function updateAll(){
+ openCountEl.textContent=countOpenEnds();
+ deckCountEl.textContent=deck.length;
+ placedCountEl.textContent=Math.max(0,boardCards.length-1);
+ passCountEl.textContent=`${stats.passes} / 3`;
+
+ updateHand();
+ updateTurnList();
+ updateLog();
+ updateZoomLabel();
+
+ const p=players[0],t=p&&p.hand[selected];
+ const humanTurn=!!(p&&turn===0&&!gameOver&&!aiBusy);
+ const noLegal=humanTurn&&!anyLegalMove(p);
+
+ passBtnEl.disabled=!noLegal;
+ passBtnEl.textContent=`パス ${stats.passes}/3`;
+
+ if(humanTurn&&noLegal){
+  hintInfoEl.textContent="出せる札がありません。パスしてください。";
+ }else{
+  hintInfoEl.textContent=(humanTurn&&t)?`選択カードの配置候補：${validPlacementsOn(t,boardCards,selectedRot).length}か所`:"";
+ }
+
+ render();
+}
+
+let toastTimer=0;function toast(s){clearTimeout(toastTimer);toastEl.textContent=s;toastEl.style.opacity="1";toastTimer=setTimeout(()=>toastEl.style.opacity="0",1300)}
+function pointerPos(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+canvas.addEventListener("pointerdown",e=>{
+ canvas.setPointerCapture(e.pointerId);
+ dragging=true;moved=false;
+ const p=pointerPos(e);
+ dragX=p.x;dragY=p.y;startCamX=camX;startCamY=camY;
+ hoveredPlacement=placementAtScreen(p.x,p.y);
+ render();
+});
+canvas.addEventListener("pointermove",e=>{
+ const p=pointerPos(e);
+ if(dragging){
+  const dx=p.x-dragX,dy=p.y-dragY;
+  if(Math.hypot(dx,dy)>7)moved=true;
+  if(moved){
+   hoveredPlacement=null;
+   camX=startCamX+dx;camY=startCamY+dy;render();
+  }
+  return;
+ }
+ const next=placementAtScreen(p.x,p.y);
+ if(!samePlacement(next,hoveredPlacement)){
+  hoveredPlacement=next;
+  render();
+ }
+});
+canvas.addEventListener("pointerup",e=>{
+ if(!dragging)return;
+ dragging=false;
+ if(moved){hoveredPlacement=null;render();return}
+ if(gameOver||turn!==0||aiBusy)return;
+ const p=players[0],t=p.hand[selected];if(!t)return;
+ const q=pointerPos(e);
+ const best=hoveredPlacement||placementAtScreen(q.x,q.y);
+ hoveredPlacement=null;
+ if(best&&placeForPlayer(p,selected,best)){
+  updateAll();
+  if(!checkEnd())nextTurn();
+ }else{
+  render();
+  toast("配置候補にカーソルを合わせて置いてください");
+ }
+});
+canvas.addEventListener("pointerleave",()=>{
+ if(!dragging&&hoveredPlacement){hoveredPlacement=null;render()}
+});
+canvas.addEventListener("wheel",e=>{e.preventDefault();const r=canvas.getBoundingClientRect();setZoom(zoom*(e.deltaY<0?1.12:.89),e.clientX-r.left,e.clientY-r.top)},{passive:false});
+canvas.addEventListener("touchstart",e=>{if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];pinchDist=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)}},{passive:true});
+canvas.addEventListener("touchmove",e=>{if(e.touches.length===2&&pinchDist){e.preventDefault();const a=e.touches[0],b=e.touches[1],d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),r=canvas.getBoundingClientRect();setZoom(zoom*(d/pinchDist),(a.clientX+b.clientX)/2-r.left,(a.clientY+b.clientY)/2-r.top);pinchDist=d}},{passive:false});
+canvas.addEventListener("touchend",e=>{if(e.touches.length<2)pinchDist=0},{passive:true});
+
+document.getElementById("rotL").onclick=()=>{if(turn!==0||gameOver||aiBusy)return;selectedRot=(selectedRot+3)%4;hintMove=null;hoveredPlacement=null;updateAll()};
+document.getElementById("flipBtn").onclick=()=>{if(turn!==0||gameOver||aiBusy)return;selectedRot=(selectedRot+2)%4;hintMove=null;hoveredPlacement=null;updateAll()};
+document.getElementById("rotR").onclick=()=>{if(turn!==0||gameOver||aiBusy)return;selectedRot=(selectedRot+1)%4;hintMove=null;hoveredPlacement=null;updateAll()};
+document.getElementById("hintBtn").onclick=()=>{if(turn!==0||gameOver||aiBusy)return;const m=chooseBestHumanMove(players[0]);if(!m){hintInfoEl.textContent="現在の手札に合法手がありません。";return}hintMove=m;selected=m.idx;selectedRot=m.r;hintInfoEl.textContent="青枠が推奨候補です。";updateHand();render()};
+passBtnEl.onclick=()=>{
+ if(turn!==0||gameOver||aiBusy)return;
+ const p=players[0];
+ if(performPass(p)){
+  updateAll();
+  if(!gameOver&&!checkEnd())setTimeout(nextTurn,260);
+ }
+};
+document.getElementById("zoomOutBtn").onclick=()=>setZoom(zoom/1.2);document.getElementById("zoomInBtn").onclick=()=>setZoom(zoom*1.2);
+document.getElementById("fitBtn").onclick=fitBoard;document.getElementById("newBtn").onclick=()=>{
+ gameDifficultyEl.value="standard";
+ startDifficultyEl.value="easy";
+ startOverlayEl.classList.add("show");
+};
+document.getElementById("helpBtn").onclick=openHelp;
+document.getElementById("startHelpBtn").onclick=openHelp;
+document.getElementById("closeHelpBtn").onclick=closeHelp;
+helpOverlayEl.addEventListener("click",e=>{if(e.target===helpOverlayEl)closeHelp();});
+document.getElementById("againBtn").onclick=()=>startGame();document.getElementById("closeEndBtn").onclick=()=>endOverlayEl.classList.remove("show");
+document.getElementById("skipEscape").onclick=finishLoss;
+document.getElementById("skipVictory").onclick=finishVictory;
+document.getElementById("startGameBtn").onclick=()=>startGame();
+document.getElementById("cancelStartBtn").onclick=()=>startOverlayEl.classList.remove("show");
+
+wrap.addEventListener("pointermove",e=>{
+ const r=wrap.getBoundingClientRect();
+ const x=e.clientX-r.left, y=e.clientY-r.top;
+ const near=(x>=0 && x<=330 && y>=0 && y<=190);
+ gameLogPanelEl.classList.toggle("logSharp",near);
+});
+wrap.addEventListener("pointerleave",()=>gameLogPanelEl.classList.remove("logSharp"));
+
+window.addEventListener("resize",resize);
+
+resize();
+})();
+</script>
+</body>
+</html>
