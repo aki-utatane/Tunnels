@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>トンネル封鎖 v1.3 - NPC Cooperative</title>
+<title>トンネル封鎖 v1.3a - NPC Cooperative</title>
 <style>
 :root{
   --bg:#0b0f13;--panel:#121920;--panel2:#19232d;--text:#eef3f7;--muted:#93a2ae;
@@ -379,7 +379,7 @@ header .helpBtn{margin-right:auto;flex:0 0 auto}
 <body>
 <div id="app">
 <header>
-  <div class="title">トンネル封鎖 <span class="ver">v1.3</span></div>
+  <div class="title">トンネル封鎖 <span class="ver">v1.3a</span></div>
   <button id="helpBtn" class="helpBtn">遊び方</button>
   <div class="headerTurn"><span class="headerTurnLabel">TURN</span><div id="turnList"></div></div>
   <div class="headerStatus" aria-label="ゲーム状況">
@@ -851,6 +851,37 @@ function validPlacementsOn(tile,cards=boardCards,rotFilter=null){
 function addCard(tile,x,y,r,cards=boardCards){
  const c={...tile,x,y,r,type:"normal"};return [...cards,c];
 }
+
+/* v1.3a: NPCs must not create a newly unreachable open tunnel.
+   A port is "unreachable" when no normal tile shape, in any rotation,
+   can legally connect to it under the current board geometry. */
+function openPortKey(p){return `${p.x2},${p.y2},${p.nx},${p.ny}`}
+function canAnyTileReachOpenPort(op,cards=boardCards){
+ for(const tile of TILE_LIBRARY){
+  for(let r=0;r<4;r++){
+   const locals=transformedBaseSlots(r).filter(s=>tile.ports.includes(s.baseIndex));
+   for(const lp of locals){
+    if(lp.nx!==-op.nx||lp.ny!==-op.ny)continue;
+    const dx2=op.x2-lp.x2,dy2=op.y2-lp.y2;
+    if(dx2%2||dy2%2)continue;
+    const x=dx2/2,y=dy2/2;
+    if(canPlaceOn(tile,x,y,r,cards))return true;
+   }
+  }
+ }
+ return false;
+}
+function uncloseableOpenPortKeys(cards=boardCards){
+ const bad=new Set();
+ for(const op of openPorts(cards))if(!canAnyTileReachOpenPort(op,cards))bad.add(openPortKey(op));
+ return bad;
+}
+function createsNewUncloseableOpenPort(tile,v,cards=boardCards,baselineBad=null){
+ const before=baselineBad||uncloseableOpenPortKeys(cards);
+ const after=uncloseableOpenPortKeys(addCard(tile,v.x,v.y,v.r,cards));
+ for(const key of after)if(!before.has(key))return true;
+ return false;
+}
 function contactCount(c,cards){
  const sm=slotMap(cards.filter(x=>x!==c));let n=0;
  for(const s of cardSlots(c))if(sm.has(`${s.x2},${s.y2},${-s.nx},${-s.ny}`))n++;
@@ -896,13 +927,16 @@ function scoreMoveFor(p,tile,idx,v,cards=boardCards){
  }
  return {...s,score};
 }
-function rankedMoves(p,cards=boardCards){
- const a=[];
- p.hand.forEach((tile,idx)=>validPlacementsOn(tile,cards).forEach(v=>a.push({...v,idx,tileName:tile.name,...scoreMoveFor(p,tile,idx,v,cards)})));
+function rankedMoves(p,cards=boardCards,avoidUncloseable=false){
+ const a=[], baselineBad=avoidUncloseable?uncloseableOpenPortKeys(cards):null;
+ p.hand.forEach((tile,idx)=>validPlacementsOn(tile,cards).forEach(v=>{
+  if(avoidUncloseable&&createsNewUncloseableOpenPort(tile,v,cards,baselineBad))return;
+  a.push({...v,idx,tileName:tile.name,...scoreMoveFor(p,tile,idx,v,cards)});
+ }));
  a.sort((x,y)=>y.score-x.score);return a;
 }
 function chooseAI(p){
- const a=rankedMoves(p);if(!a.length)return null;
+ const a=rankedMoves(p,boardCards,true);if(!a.length)return null;
  let i=0;
  if(difficultyEl.value==="normal")i=Math.floor(Math.random()*Math.min(3,a.length));
  if(difficultyEl.value==="easy")i=Math.floor(Math.random()*Math.min(7,a.length));
@@ -910,10 +944,11 @@ function chooseAI(p){
 }
 function chooseBestHumanMove(p){const a=rankedMoves({...p,profile:null});return a[0]||null}
 function anyLegalMove(p,cards=boardCards){return p.hand.some(t=>validPlacementsOn(t,cards).length>0)}
+function anySafeAIMove(p,cards=boardCards){return rankedMoves(p,cards,true).length>0}
 
-function performPass(p){
+function performPass(p,legalMoveCheck=anyLegalMove){
  if(gameOver)return false;
- if(anyLegalMove(p)){
+ if(legalMoveCheck(p)){
   if(p.human)toast("出せる札があるためパスできません");
   return false;
  }
@@ -1081,7 +1116,7 @@ function nextTurn(){
    const m=chooseAI(p);
 
    if(!m){
-    performPass(p);
+    performPass(p,anySafeAIMove);
     aiBusy=false;
     updateAll();
     if(!gameOver&&!checkEnd())setTimeout(nextTurn,520);
